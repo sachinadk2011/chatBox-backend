@@ -37,6 +37,7 @@ router.post("/sendmessage", fetchuser, checkFriends, [
     try {
         let success = false;
         const {receiver, message}= req.body;
+        
         if(!receiver){
             return res.status(400).json({ error: "Receiver not found" });
         }
