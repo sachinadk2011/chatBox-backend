@@ -3,6 +3,7 @@ const router = express.Router();
 const Message = require('../models/Messages');
 const { body, validationResult } = require('express-validator');
 const fetchuser = require('../middlewire/fetchuser');
+const checkFriends = require('../middlewire/checkFriends');
 
 //Route 1: fetch all user messages using: GET "/api/messages/fetchallmessages". Login required
 router.get('/fetchallmessages', fetchuser, async (req, res) => {
@@ -25,7 +26,7 @@ router.get('/fetchallmessages', fetchuser, async (req, res) => {
 });
 
 //Route 2: send a message using: POST "/api/messages/sendmessage". Login required
-router.post("/sendmessage", fetchuser,[
+router.post("/sendmessage", fetchuser, checkFriends, [
     body('message', "Enter a valid message").isLength({ min: 1 }),
     
 ], async(req,res)=>{
