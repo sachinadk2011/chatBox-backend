@@ -46,7 +46,7 @@ async(req, res)=>{
             status: true
         })
         success = true;
-        const token = await jwt.sign({user: {id: user.id}}, JWT_SECRET, {expiresIn: '1h'});
+        const token = await jwt.sign({user: {id: user.id}}, JWT_SECRET, {expiresIn: '1d'});
         const {name, email} = user;
         // const token = jwt.sign({user: {id: user.id}}, JWT_SECRET);
         return res.status(200).json({success: success, token, user: {name, email}});
@@ -81,7 +81,7 @@ router.post("/loginuser", loginLimiter,
         if(!comparePassword){
             return res.status(400).json({error: "Invalid credentials"});
         }
-        const token = await jwt.sign({user: {id: user.id}}, JWT_SECRET, {expiresIn: '1h'});
+        const token = await jwt.sign({user: {id: user.id}}, JWT_SECRET, {expiresIn: '1d'});
         let success = true;
         const {name} = user;
         return res.status(200).json({success, token, user: {name, email}});

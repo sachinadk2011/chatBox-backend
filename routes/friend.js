@@ -13,7 +13,7 @@ router.get('/fetchallfriends', fetchuser, async (req, res) => {
         if (!user) {
             return res.status(404).json({ error: "User not found" });
         }
-        res.json(user.friends); // Return the friends list
+        return res.status(200).json(user.friends); // Return the friends list
     } catch (error) {
         console.error(error.message);
         res.status(500).send("Internal Server Error");
@@ -107,6 +107,10 @@ router.post('/sendfriendrequest', fetchuser, async (req, res) => {
         const user = await User.findById(userId);
         if (!user || !friend) {
             return res.status(404).json({ error: "User or friend not found" });
+        }
+        if(user.friends.includes(friendId)){
+           
+            return res.status(400).json({ error: "Already friends" });
         }
         if(user.sentRequests.includes(friendId)){
             return res.status(400).json({ error: "Friend request already sent" });
