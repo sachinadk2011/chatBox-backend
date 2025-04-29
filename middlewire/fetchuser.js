@@ -6,7 +6,7 @@ const fetchuser = (req, res, next) => {
   // to req  object:
   const token = req.header("auth-token");
   if (!token) {
-    console.log(token, "token not found");
+    
    return res.status(401).send({ error: "please autheticate using valide token" });
   }
   try {
@@ -14,7 +14,7 @@ const fetchuser = (req, res, next) => {
     req.user = data.user;
     next();
   } catch (error) {
-    console.error(error.message);
+    
     res.status(500).send("Internal Server Error");
   }
 };

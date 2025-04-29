@@ -15,7 +15,7 @@ router.get('/fetchallfriends', fetchuser, async (req, res) => {
         }
         return res.status(200).json(user.friends); // Return the friends list
     } catch (error) {
-        console.error(error.message);
+        
         res.status(500).send("Internal Server Error");
     }
 });
@@ -30,7 +30,7 @@ router.get('/fetchallfriendrequests', fetchuser, async (req, res) => {
         }
         res.json(user.friendRequests); // Return the friend requests list
     } catch (error) {
-        console.error(error.message);
+        
         res.status(500).send("Internal Server Error");
     }
 });
@@ -68,7 +68,7 @@ router.post('/receivefriendrequest', fetchuser, checkFriends, async (req, res) =
             sender.sentRequests = sender.sentRequests.filter(id => id.toString() !== userId); // Remove from sent requests  
         }
         if(user.friends.includes(friendId)){
-            console.log(user.friends, friendId, "already friends")
+            
             return res.status(400).json({ error: "Already friends" });
         }
         await user.save();
@@ -76,7 +76,7 @@ router.post('/receivefriendrequest', fetchuser, checkFriends, async (req, res) =
 
         res.json({ message: "Friend request accepted", friends: user.friends });
     } catch (error) {
-        console.error(error.message);
+       
         res.status(500).send("Internal Server Error");
     }
 });
@@ -91,7 +91,7 @@ router.get('/sentfriendrequests', fetchuser, async (req, res) => {
         }
         res.json(user.sentRequests); // Return the sent requests list
     } catch (error) {
-        console.error(error.message);
+       
         res.status(500).send("Internal Server Error");
     }
 });
@@ -125,7 +125,7 @@ router.post('/sendfriendrequest', fetchuser, async (req, res) => {
 
         res.json({ message: "Friend request sent", sentRequests: user.sentRequests });
     } catch (error) {
-        console.error(error.message);
+       
         res.status(500).send("Internal Server Error");
     }
 });

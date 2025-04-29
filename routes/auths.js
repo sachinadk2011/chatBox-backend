@@ -48,11 +48,11 @@ async(req, res)=>{
         success = true;
         const token = await jwt.sign({user: {id: user.id}}, JWT_SECRET, {expiresIn: '1d'});
         const {name, email} = user;
-        // const token = jwt.sign({user: {id: user.id}}, JWT_SECRET);
+        
         return res.status(200).json({success: success, token, user: {name, email}});
         
     } catch (error) {
-        console.error(error.message);
+        
         return res.status(500).send("Internal Server Error");
     }
     
@@ -88,7 +88,7 @@ router.post("/loginuser", loginLimiter,
 
         
     } catch (error) {
-        console.error(error.message);
+        
         return res.status(500).send("Internal Server Error");
         
     }
@@ -101,7 +101,7 @@ router.post("/getuser", fetchuser, async (req, res) => {
         const user = await User.findById(userId).select("-password");
         return res.status(200).json({user});
     } catch (error) {
-        console.error(error.message);
+        
         return res.status(500).send("Internal Server Error");
     }
     

@@ -7,7 +7,6 @@ const checkFriends = async (req, res, next) => {
         const friendId= req.body.friendId || req.body.receiver;
         
         if(!friendId){
-            console.log(friendId, "friendId not found");
             return res.status(400).json({ error: "Friend ID not found" });
         }
         const user = await Users.findById(userId);
@@ -27,7 +26,6 @@ const checkFriends = async (req, res, next) => {
        
         return res.status(400).json({ error: "You can't send message to this user" });
     } catch (error) {
-        console.error(error.message);
         return res.status(500).send("Internal Server Error");
         
     }
