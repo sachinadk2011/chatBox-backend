@@ -81,16 +81,17 @@ router.post("/loginuser", loginLimiter,
         if(!comparePassword){
             return res.status(400).json({error: "Invalid credentials"});
         }
+        user.status = true;
+        await user.save();
         const token = await jwt.sign({user: {id: user.id}}, JWT_SECRET, {expiresIn: '1d'});
         let success = true;
         const {name} = user;
         return res.status(200).json({success, token, user: {name, email}});
 
-        
     } catch (error) {
-        
+
         return res.status(500).send("Internal Server Error");
-        
+
     }
 })
 
