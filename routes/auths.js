@@ -28,16 +28,16 @@ router.post('/createuser',
     body("password", "Password must be alphanumeric").isLength({min: 8})
 ], 
 async(req, res)=>{
+    let success = false;
     const errors = validationResult(req);
     if(!errors.isEmpty()){
-        return res.status(400).json({errors: errors.array()});
+        return res.status(400).json({success: false, errors: errors.array()});
     }
     try {
         let user = await User.findOne({email: req.body.email});
         if(user){
-            return res.status(400).json({error: "User with this email already exits"});
+            return res.status(400).json({success: false, error: "User with this email already exits"});
         }
-        let success = false;
         let securePassword = await bcrypt.hash(req.body.password, await bcrypt.genSalt(10));
         user = await User.create({
             name: req.body.name,
@@ -45,15 +45,14 @@ async(req, res)=>{
             password: securePassword,
             status: true
         })
-        success = true;
+       
         const token = await jwt.sign({user: {id: user.id}}, JWT_SECRET, {expiresIn: '1d'});
         const {name, email} = user;
         
-        return res.status(200).json({success: success, token, user: {name, email}});
-        
+        return res.status(200).json({ success: true, token, user: {name, email}, message:"Successfully created user"});
+
     } catch (error) {
-        
-        return res.status(500).send("Internal Server Error");
+        return res.status(500).send({success: false, error: "Internal Server Error"});
     }
     
 })
@@ -62,35 +61,35 @@ async(req, res)=>{
 router.post("/loginuser", loginLimiter,
     [
         body("email", "Enter a valid email").isEmail(),
-        body("password", "Password must be alphanumeric").isAlphanumeric().isLength({min: 8})
+        body("password", "Password must be alphanumeric").isLength({min: 8})
     ],
     async (req, res) => {
         
         let errors = validationResult(req);
         if(!errors.isEmpty()){
-            return res.status(400).json({errors: errors.array()});
+            return res.status(400).json({success: false, error: errors.array()});
         }
         
         const {email, password}= req.body;
         try {
         let user =await User.findOne({email: email});
         if(!user){
-            return res.status(400).json({error: "Invalid credentials"});
+            return res.status(400).json({success: false, error: "Invalid credentials"});
         }
         const comparePassword = await bcrypt.compare(password, user.password);
         if(!comparePassword){
-            return res.status(400).json({error: "Invalid credentials"});
+            return res.status(400).json({success: false, error: "Invalid credentials"});
         }
         user.status = true;
         await user.save();
         const token = await jwt.sign({user: {id: user.id}}, JWT_SECRET, {expiresIn: '1d'});
-        let success = true;
+        
         const {name} = user;
-        return res.status(200).json({success, token, user: {name, email}});
+        return res.status(200).json({success: true, token: token, user: {name, email}, message: "Successfully logged in"});
 
     } catch (error) {
 
-        return res.status(500).send("Internal Server Error");
+        return res.status(500).send({success: false, error:"Internal Server Error"});
 
     }
 })
