@@ -36,7 +36,7 @@ async(req, res)=>{
     try {
         let user = await User.findOne({email: req.body.email});
         if(user){
-            return res.status(400).json({success: false, error: "User with this email already exits"});
+            return res.status(400).json({success: false, message: "User with this email already exits"});
         }
         let securePassword = await bcrypt.hash(req.body.password, await bcrypt.genSalt(10));
         user = await User.create({
@@ -49,7 +49,7 @@ async(req, res)=>{
         const token = await jwt.sign({user: {id: user.id}}, JWT_SECRET, {expiresIn: '1d'});
         const {name, email} = user;
         
-        return res.status(200).json({ success: true, token, user: {name, email}, message:"Successfully created user"});
+        return res.status(200).json({ success: true, token: token, user: {name, email}, message:"Successfully created user"});
 
     } catch (error) {
         return res.status(500).send({success: false, error: "Internal Server Error"});
@@ -95,11 +95,16 @@ router.post("/loginuser", loginLimiter,
 })
 
 //Router 3: get logged in user details
-router.post("/getuser", fetchuser, async (req, res) => {
+router.get("/getuser", fetchuser, async (req, res) => {
     try {
-        const userId = req.user.id;
-        const user = await User.findById(userId).select("-password");
-        return res.status(200).json({user});
+         const userId = req.user.id;
+    let user = await User.findById(userId).select("-password");
+     if (!user) {
+      // User not found, possibly deleted
+      return res.status(404).json({ success: false, message: "Account not found" });
+    }
+
+    return res.status(200).send({ success: true, user:{name: user.name, email: user.email} });
     } catch (error) {
         
         return res.status(500).send("Internal Server Error");
