@@ -2,8 +2,8 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/Users');
 const { body, validationResult } = require('express-validator');
-const fetchuser = require('../middlewire/fetchuser');
-const checkFriends = require('../middlewire/checkFriends');
+const fetchuser = require('../middleware/fetchuser');
+const checkFriends = require('../middleware/checkFriends');
 
 //Route 1: fetch all Friends list using get: "/api/friends/fetchallfriends". Login required
 router.get('/fetchallfriends', fetchuser, async (req, res) => {

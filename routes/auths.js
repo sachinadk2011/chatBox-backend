@@ -5,7 +5,7 @@ const { body, validationResult } = require('express-validator');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET;
-const fetchuser = require('../middlewire/fetchuser');
+const fetchuser = require('../middleware/fetchuser');
 
 const rateLimit = require('express-rate-limit');
 

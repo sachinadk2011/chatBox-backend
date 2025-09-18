@@ -2,8 +2,8 @@ const express = require('express');
 const router = express.Router();
 const Message = require('../models/Messages');
 const { body, validationResult } = require('express-validator');
-const fetchuser = require('../middlewire/fetchuser');
-const checkFriends = require('../middlewire/checkFriends');
+const fetchuser = require('../middleware/fetchuser');
+const checkFriends = require('../middleware/checkFriends');
 
 //Route 1: fetch all user messages using: GET "/api/messages/fetchallmessages". Login required
 router.get('/fetchallmessages', fetchuser, async (req, res) => {
