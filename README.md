@@ -27,23 +27,23 @@ chatBox-backend/
 
 📡 API Endpoints (basic idea)
 
-POST /api/users → Register new user
+- POST /api/users → Register new user
 
-POST /api/auth → Login
+- POST /api/auth → Login
 
-GET /api/messages → Fetch messages
+- GET /api/messages → Fetch messages
 
-POST /api/messages → Send a new message
+- POST /api/messages → Send a new message
 
 🎯 Future Improvements
 
-Add WebSocket (Socket.io) for real-time chat
+- Add WebSocket (Socket.io) for real-time chat
 
-Implement authentication and authorization properly
+- Implement authentication and authorization properly
 
-Add message history and user profiles
+- Add message history and user profiles
 
-Write unit and integration tests
+- Write unit and integration tests
 
 👨‍💻 Author
 
