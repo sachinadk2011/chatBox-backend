@@ -17,34 +17,25 @@ Built with **Node.js, Express, and MongoDB (Mongoose)**.
 - MongoDB + Mongoose
 
 ## 📂 Folder Structure
-chatBox-backend/
-│── middlewire/ # Custom middleware functions
-│── models/ # Database schemas
-│── routes/ # API routes
-│── app.js # Entry point of the backend server
-│── db.js # Database connection file
-│── package.json # Dependencies and scripts
+chatBox-backend/<br>
+│── middlewire/ # Custom middleware functions<br>
+│── models/ # Database schemas<br>
+│── routes/ # API routes<br>
+│── app.js # Entry point of the backend server<br>
+│── db.js # Database connection file<br>
+│── package.json # Dependencies and scripts<br>
 
-📡 API Endpoints (basic idea)
-
+## 📡 API Endpoints (basic idea)
 - POST /api/users → Register new user
-
 - POST /api/auth → Login
-
 - GET /api/messages → Fetch messages
-
 - POST /api/messages → Send a new message
 
-🎯 Future Improvements
-
+## 🎯 Future Improvements
 - Add WebSocket (Socket.io) for real-time chat
-
 - Implement authentication and authorization properly
-
 - Add message history and user profiles
-
 - Write unit and integration tests
 
-👨‍💻 Author
-
+👨‍💻 Author<br>
 Sachin Adhikari
