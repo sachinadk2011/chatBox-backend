@@ -46,10 +46,10 @@ async(req, res)=>{
             status: true
         })
        
-        const token = await jwt.sign({user: {id: user.id}}, JWT_SECRET, {expiresIn: '1d'});
+        const token = await jwt.sign({user: {id: user._id}}, JWT_SECRET, {expiresIn: '1d'});
         const {name, email} = user;
-        
-        return res.status(200).json({ success: true, token: token, user: {name, email}, message:"Successfully created user"});
+
+        return res.status(200).json({ success: true, token: token, user: {id: user._id, name, email}, message:"Successfully created user"});
 
     } catch (error) {
         return res.status(500).send({success: false, error: "Internal Server Error"});
@@ -78,7 +78,7 @@ router.post("/loginuser", loginLimiter,
         }
         const comparePassword = await bcrypt.compare(password, user.password);
         if(!comparePassword){
-            return res.status(400).json({success: false, error: "Invalid credentials"});
+            return res.status(400).json({success: false, error: "Wrong password"});
         }
         user.status = true;
         await user.save();

@@ -18,10 +18,10 @@ router.get('/fetchallmessages', fetchuser, async (req, res) => {
         if (!messages) {
             return res.status(404).json({ error: "No messages found" });
         }
-        res.json(messages);
+       return  res.status(200).json({ success: true, messages: messages });
     } catch (error) {
         console.error(error.message);
-        res.status(500).send("Internal Server Error");
+       return  res.status(500).send("Internal Server Error");
     }
 });
 
@@ -45,20 +45,20 @@ router.post("/sendmessage", fetchuser, checkFriends, [
             return res.status(400).json({ error: "Message content cannot be empty" });
         }
         const newMessage = new Message({
+            message: message,
             sender: req.user.id,
-            receiver: receiver,
-            message: message
+            receiver: receiver
         });
         const savemessage = await newMessage.save();
         if(!savemessage) {
             return res.status(400).json({ success: success, error: "Unable to send message" });
         }
         success = true;
-        return res.status(200).json({ success: success, message: savemessage });
+        return res.status(200).json({ success: success, message: "savemessage"});
         
     } catch (error) {
         console.error(error.message);
-        res.status(500).send("Internal Server Error");
+       return  res.status(500).send("Internal Server Error");
         
     }
 })
@@ -81,10 +81,10 @@ router.put('/markasread/:senderId', fetchuser, async(req,res)=>{
             return res.status(404).json({ success: success, error: "No messages found" });
         }
         success = true;
-        res.json({ success: success, updateMessage, message: "Messages marked as read" });
+       return  res.status(200).json({ success: success, updateMessage, message: "Messages marked as read" });
     } catch (error) {
         console.error(error.message);
-        res.status(500).send("Internal Server Error");
+        return  res.status(500).send("Internal Server Error");
     }
 })
 

@@ -15,20 +15,20 @@ router.get('/fetchallfriends', fetchuser, async (req, res) => {
         }
         return res.status(200).json(user.friends); // Return the friends list
     } catch (error) {
-        
-        res.status(500).send("Internal Server Error");
+
+        return res.status(500).send("Internal Server Error");
     }
 });
 
 // Route 2: fetch all received friend requests using gets: "/api/friends/fetchallfriendrequests". Login required
-router.get('/fetchallfriendrequests', fetchuser, async (req, res) => {
+router.get('/fetchallreceivedrequests', fetchuser, async (req, res) => {
     try {
         const userId = req.user.id; // Get the user ID from the request
         const user = await User.findById(userId).populate('friendRequests', 'name'); // Populate friend requests with name
         if (!user) {
             return res.status(404).json({ error: "User not found" });
         }
-        res.json(user.friendRequests); // Return the friend requests list
+        res.json(user.friendRequests.map(req => req.name)); // Return the friend requests list
     } catch (error) {
         
         res.status(500).send("Internal Server Error");
@@ -67,6 +67,10 @@ router.post('/receivefriendrequest', fetchuser, checkFriends, async (req, res) =
             user.friendRequests = user.friendRequests.filter(id => id.toString() !== friendId); // Remove from friend requests
             sender.sentRequests = sender.sentRequests.filter(id => id.toString() !== userId); // Remove from sent requests  
         }
+        if (action !== 'accept' && action !== 'reject') {
+            user.friendRequests.push(friendId); // Re-add to friend requests if action is invalid
+            sender.sentRequests.push(userId); // Re-add to sent requests if action is invalid
+        }
         if(user.friends.includes(friendId)){
             
             return res.status(400).json({ error: "Already friends" });
@@ -74,7 +78,7 @@ router.post('/receivefriendrequest', fetchuser, checkFriends, async (req, res) =
         await user.save();
         await sender.save(); // Save the sender document to update the friends list
 
-        res.json({ message: "Friend request accepted", friends: user.friends });
+        res.json({ message: "Friend request accepted", friends: user.friends , friendRequests: user.friendRequests });
     } catch (error) {
        
         res.status(500).send("Internal Server Error");
@@ -82,14 +86,14 @@ router.post('/receivefriendrequest', fetchuser, checkFriends, async (req, res) =
 });
 
 //Route 4: see send frd requests using get: "/api/friends/sentfriendrequests". Login required
-router.get('/sentfriendrequests', fetchuser, async (req, res) => {
+router.get('/fetchallsentrequests', fetchuser, async (req, res) => {
     try {
         const userId = req.user.id; // Get the user ID from the request
-        const user = await User.findById(userId); // Populate sent requests with name
+        const user = await User.findById(userId).populate('sentRequests', 'name'); // Populate sent requests with name
         if (!user) {
             return res.status(404).json({ error: "User not found" });
         }
-        res.json(user.sentRequests); // Return the sent requests list
+        res.json(user.sentRequests.map(req => req.name)); // Return the sent requests list
     } catch (error) {
        
         res.status(500).send("Internal Server Error");
@@ -123,7 +127,7 @@ router.post('/sendfriendrequest', fetchuser, async (req, res) => {
         await friend.save(); // Save the friend document to update the friend requests list
         
 
-        res.json({ message: "Friend request sent", sentRequests: user.sentRequests });
+        return res.json({ message: "Friend request sent", sentRequests: user.sentRequests });
     } catch (error) {
        
         res.status(500).send("Internal Server Error");
