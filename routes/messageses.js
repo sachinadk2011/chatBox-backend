@@ -21,7 +21,7 @@ router.get('/fetchallmessages', fetchuser, async (req, res) => {
        return  res.status(200).json({ success: true, messages: messages });
     } catch (error) {
         console.error(error.message);
-       return  res.status(500).send("Internal Server Error");
+       return  res.status(500).send({ success: false, error: "Internal Server Error" });
     }
 });
 
@@ -49,16 +49,22 @@ router.post("/sendmessage", fetchuser, checkFriends, [
             sender: req.user.id,
             receiver: receiver
         });
-        const savemessage = await newMessage.save();
-        if(!savemessage) {
+       // Save first
+let savedMessage = await newMessage.save();
+
+// Then populate
+savedMessage = await savedMessage.populate('receiver', 'name');
+savedMessage = await savedMessage.populate('sender', 'name');
+
+        if(!savedMessage) {
             return res.status(400).json({ success: success, error: "Unable to send message" });
         }
         success = true;
-        return res.status(200).json({ success: success, message: "savemessage"});
+        return res.status(200).json({ success: success, message: savedMessage });
         
     } catch (error) {
         console.error(error.message);
-       return  res.status(500).send("Internal Server Error");
+       return  res.status(500).send({ success: false, error: "Internal Server Error" });
         
     }
 })

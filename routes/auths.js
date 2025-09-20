@@ -82,10 +82,10 @@ router.post("/loginuser", loginLimiter,
         }
         user.status = true;
         await user.save();
-        const token = await jwt.sign({user: {id: user.id}}, JWT_SECRET, {expiresIn: '1d'});
+        const token = await jwt.sign({user: {id: user._id}}, JWT_SECRET, {expiresIn: '1d'});
         
         const {name} = user;
-        return res.status(200).json({success: true, token: token, user: {name, email}, message: "Successfully logged in"});
+        return res.status(200).json({success: true, token: token, user: {name, email, id: user._id}, message: "Successfully logged in"});
 
     } catch (error) {
 

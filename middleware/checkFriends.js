@@ -4,8 +4,10 @@ const Users = require('../models/Users');
 const checkFriends = async (req, res, next) => {
     try {
         const userId = req.user.id; // Assuming userId is passed in the request body
-        const friendId= req.body.friendId || req.body.receiver;
-        
+        const friendId = req.body.friendId || req.body.receiver ;
+        console.log(req.body);
+        console.log("friendId", friendId, userId, req.body.receiver);
+
         if(!friendId){
             return res.status(400).json({ error: "Friend ID not found" });
         }

@@ -6,7 +6,7 @@ const fetchuser = async (req, res, next) => {
   // to req  object:
   const token = req.header("auth-token");
   if (!token) {
-    return res.status(401).send({ error: "please autheticate using valide token" });
+    return res.status(401).send({ success: false, error: "please autheticate using valide token" });
   }
   try {
     const data = await jwt.verify(token, JWT_SECRET);
@@ -25,10 +25,10 @@ const fetchuser = async (req, res, next) => {
       }
     }
 
-    return res.status(401).send({ error: "Session expired. Please log in again." });
+    return res.status(401).send({success: false, error: "Session expired. Please log in again." });
   }
 
-  return res.status(401).send({ error: "Invalid authentication token." });
+  return res.status(401).send({ success: false, error: "Invalid authentication token." });
 }
 
 };
