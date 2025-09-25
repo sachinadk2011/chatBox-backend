@@ -49,7 +49,7 @@ async(req, res)=>{
         const token = await jwt.sign({user: {id: user._id}}, JWT_SECRET, {expiresIn: '1d'});
         const {name, email} = user;
 
-        return res.status(200).json({ success: true, token: token, user: {id: user._id, name, email}, message:"Successfully created user"});
+        return res.status(200).json({ success: true, token: token, message:"Successfully created user"});
 
     } catch (error) {
         return res.status(500).send({success: false, error: "Internal Server Error"});
@@ -84,8 +84,8 @@ router.post("/loginuser", loginLimiter,
         await user.save();
         const token = await jwt.sign({user: {id: user._id}}, JWT_SECRET, {expiresIn: '1d'});
         
-        const {name} = user;
-        return res.status(200).json({success: true, token: token, user: {name, email, id: user._id}, message: "Successfully logged in"});
+        
+        return res.status(200).json({success: true, token: token, message: "Successfully logged in"});
 
     } catch (error) {
 
@@ -104,7 +104,7 @@ router.get("/getuser", fetchuser, async (req, res) => {
       return res.status(404).json({ success: false, message: "Account not found" });
     }
 
-    return res.status(200).send({ success: true, user:{name: user.name, email: user.email} });
+    return res.status(200).send({ success: true, user:{name: user.name, email: user.email, id: user._id} });
     } catch (error) {
         
         return res.status(500).send("Internal Server Error");
