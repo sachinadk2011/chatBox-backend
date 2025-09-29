@@ -2,6 +2,8 @@ const connecttomoongo = require('./db');
 const express = require('express');
 const cors = require('cors');
 const updateSchema = require('./scripts/migration')
+const http = require('http');  // 👈 needed for socket.io
+const { Server } = require('socket.io');
 
 connecttomoongo();
 //updateSchema(); // Run the migration script to add new fields to the User schema in database
@@ -21,8 +23,45 @@ app.use('/api/messages', require('./routes/messageses')); // added route for mes
 app.use('/api/users', require('./routes/users')); // added route for users
 app.use('/api/friends', require('./routes/friend')); // added route for friends
 
-app.listen(port, () => {
-  console.log(`app listening on port ${port}`);
+// 👉 Instead of app.listen, create a server instance
+const server = http.createServer(app);
+
+// 👉 Setup Socket.IO
+const io = new Server(server, {
+  cors: {
+    origin: "*", // In production, change to your frontend domain
+    methods: ["GET", "POST"]
+  }
+});
+
+// Socket.IO logic
+io.on("connection", (socket) => {
+  console.log("A user connected: ", socket.id);
+
+  // user joins their "room" (userId = unique)
+  socket.on("joinRoom", (userId) => {
+    socket.join(userId);
+    console.log(`User ${userId} joined room`);
+  });
+
+  // listen for messages
+  socket.on("sendMessage", (data) => {
+    console.log("Message received: ", data);
+
+    
+
+    // deliver to receiver
+    io.to(data.receiver._id).emit("receiveMessage", data);
+  });
+
+  socket.on("disconnect", () => {
+    console.log("User disconnected: ", socket.id);
+  });
+});
+
+// start the server with both Express + Socket.IO
+server.listen(port, () => {
+  console.log(`Server running on port ${port}`);
 });
 
 

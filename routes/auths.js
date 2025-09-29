@@ -13,7 +13,7 @@ const rateLimit = require('express-rate-limit');
 router.use(express.json()); // Re-enable the JSON middleware
 
 const loginLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
+    windowMs: 1 * 60 * 1000, // 15 minutes
     max: 5, // Limit each IP to 5 requests per windowMs
     message: "Too many requests from this IP, please try again later."
 });
@@ -106,8 +106,8 @@ router.get("/getuser", fetchuser, async (req, res) => {
 
     return res.status(200).send({ success: true, user:{name: user.name, email: user.email, id: user._id} });
     } catch (error) {
-        
-        return res.status(500).send("Internal Server Error");
+
+        return res.status(500).send({success: false, message:"Internal Server Error"});
     }
     
 })

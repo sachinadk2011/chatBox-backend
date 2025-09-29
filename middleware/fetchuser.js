@@ -6,7 +6,7 @@ const fetchuser = async (req, res, next) => {
   // to req  object:
   const token = req.header("auth-token");
   if (!token) {
-    return res.status(401).send({ success: false, error: "please autheticate using valide token" });
+    return res.status(401).send({ success: false, message: "please autheticate using valide token" });
   }
   try {
     const data = await jwt.verify(token, JWT_SECRET);

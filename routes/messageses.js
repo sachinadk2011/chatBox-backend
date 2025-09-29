@@ -16,12 +16,12 @@ router.get('/fetchallmessages', fetchuser, async (req, res) => {
              ]}
         ).populate('receiver', 'name').populate('sender', 'name');
         if (!messages) {
-            return res.status(404).json({ error: "No messages found" });
+            return res.status(404).json({ success: false, message: "No messages found" });
         }
-       return  res.status(200).json({ success: true, messages: messages });
+       return  res.status(200).json({ success: true, messages: messages, message: "Messages fetched successfully" });
     } catch (error) {
         console.error(error.message);
-       return  res.status(500).send({ success: false, error: "Internal Server Error" });
+       return  res.status(500).send({ success: false, message: "Internal Server Error" });
     }
 });
 
