@@ -25,10 +25,10 @@ const fetchuser = async (req, res, next) => {
       }
     }
 
-    return res.status(401).send({success: false, error: "Session expired. Please log in again." });
+    return res.status(401).send({success: false, message: "Session expired. Please log in again." });
   }
 
-  return res.status(401).send({ success: false, error: "Invalid authentication token." });
+  return res.status(401).send({ success: false, message: "Invalid authentication token." });
 }
 
 };
