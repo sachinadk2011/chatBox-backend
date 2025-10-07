@@ -16,12 +16,12 @@ router.get('/fetchallmessages', fetchuser, async (req, res) => {
              ]}
         ).populate('receiver', 'name').populate('sender', 'name');
         if (!messages) {
-            return res.status(404).json({ success: false, message: "No messages found" });
+            return res.status(404).json({ success: false, error: "No messages found" });
         }
        return  res.status(200).json({ success: true, messages: messages, message: "Messages fetched successfully" });
     } catch (error) {
-        console.error(error.message);
-       return  res.status(500).send({ success: false, message: "Internal Server Error" });
+        console.error(error);
+       return  res.status(500).send({ success: false, error: "Internal Server Error" });
     }
 });
 
@@ -35,14 +35,14 @@ router.post("/sendmessage", fetchuser, checkFriends, [
         return res.status(400).json({errors: validationErrors.array()});
     }
     try {
-        let success = false;
+        
         const {receiver, message}= req.body;
         
         if(!receiver){
-            return res.status(400).json({ error: "Receiver not found" });
+            return res.status(400).json({success: false, error: "Receiver not found" });
         }
         if(!message){
-            return res.status(400).json({ error: "Message content cannot be empty" });
+            return res.status(400).json({success: false, error: "Message content cannot be empty" });
         }
         const newMessage = new Message({
             message: message,
@@ -57,10 +57,10 @@ savedMessage = await savedMessage.populate('receiver', 'name');
 savedMessage = await savedMessage.populate('sender', 'name');
 
         if(!savedMessage) {
-            return res.status(400).json({ success: success, error: "Unable to send message" });
+            return res.status(400).json({ success: false, error: "Unable to send message" });
         }
-        success = true;
-        return res.status(200).json({ success: success, message: savedMessage });
+        
+        return res.status(200).json({ success: true, message: savedMessage });
         
     } catch (error) {
         console.error(error.message);
@@ -72,10 +72,10 @@ savedMessage = await savedMessage.populate('sender', 'name');
 //Route 3: markasread a mesage using: POST "/api/messages/markasread". Login required
 router.put('/markasread/:senderId', fetchuser, async(req,res)=>{
     try {
-        let success = false;
+        
         const { senderId } = req.params;
         if (!senderId) {
-            return res.status(400).json({ error: "Sender ID not found" });
+            return res.status(400).json({success: false, error: "Sender ID not found" });
         }
        
         const updateMessage = await Message.updateMany({
@@ -84,13 +84,13 @@ router.put('/markasread/:senderId', fetchuser, async(req,res)=>{
             status: false
         }, { $set: { status: true } });
         if (updateMessage.modifiedCount === 0) {
-            return res.status(404).json({ success: success, error: "No messages found" });
+            return res.status(404).json({ success: false, error: "No messages found" });
         }
-        success = true;
-       return  res.status(200).json({ success: success, updateMessage, message: "Messages marked as read" });
+        
+       return  res.status(200).json({ success: true, updateMessage:updateMessage, message: "Messages marked as read" });
     } catch (error) {
         console.error(error.message);
-        return  res.status(500).send("Internal Server Error");
+        return  res.status(500).send({"success": false, "error": "Internal Server Error"});
     }
 })
 

@@ -36,7 +36,7 @@ async(req, res)=>{
     try {
         let user = await User.findOne({email: req.body.email});
         if(user){
-            return res.status(400).json({success: false, message: "User with this email already exits"});
+            return res.status(400).json({success: false, error: "User with this email already exists"});
         }
         let securePassword = await bcrypt.hash(req.body.password, await bcrypt.genSalt(10));
         user = await User.create({
@@ -101,13 +101,13 @@ router.get("/getuser", fetchuser, async (req, res) => {
     let user = await User.findById(userId).select("-password");
      if (!user) {
       // User not found, possibly deleted
-      return res.status(404).json({ success: false, message: "Account not found" });
+      return res.status(404).json({ success: false, error: "Account not found" });
     }
 
     return res.status(200).send({ success: true, user:{name: user.name, email: user.email, id: user._id} });
     } catch (error) {
 
-        return res.status(500).send({success: false, message:"Internal Server Error"});
+        return res.status(500).send({success: false, error:"Internal Server Error"});
     }
     
 })
