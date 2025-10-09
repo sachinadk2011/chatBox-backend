@@ -40,7 +40,10 @@ router.get('/fetchallreceivedrequests', fetchuser, async (req, res) => {
         if (!user) {
             return res.status(404).json({ success: false, error: "User not found" });
         }
-        const friendRequests = user.friendRequests;
+        const friendRequests = await Promise.all(user.friendRequests.map(async frd =>{
+            const fullFrd = await User.findById(frd._id).select('name email friends').populate('friends', 'name email');
+            return mutualFriends(user, fullFrd);
+        }));
         console.log("Received Friend Requests:", friendRequests);
         res.status(200).json({success: true, friendRequests: friendRequests}); // Return the friend requests list
         
@@ -107,7 +110,10 @@ router.get('/fetchallsentrequests', fetchuser, async (req, res) => {
         if (!user) {
             return res.status(404).json({success: false, error: "User not found" });
         }
-        const sentRequests = user.sentRequests.map(req => req.name);
+        const sentRequests = await Promise.all(user.sentRequests.map(async frd =>{
+            const fullFrd = await User.findById(frd._id).select('name email friends').populate('friends', 'name email');
+            return mutualFriends(user, fullFrd);
+        }));
         console.log("Sent Friend Requests:", sentRequests);
         res.status(200).json({success: true, sentRequests: sentRequests}); // Return the sent requests list
     } catch (error) {
@@ -150,6 +156,8 @@ router.post('/sendfriendrequest', fetchuser, async (req, res) => {
     }
 });
 
+
+
 // Route-6: Suggest friends using: GET "/api/friends/suggestfriends". Login required
 router.get('/suggestfriends', fetchuser, async(req,res)=>{
     try {
@@ -183,5 +191,33 @@ router.get('/suggestfriends', fetchuser, async(req,res)=>{
         res.status(500).send({success:false ,error:"Internal Server Error"});
     }
 })
+
+//Route 7: Cancel sent friend request using post: "/api/friends/cancelsentfriendrequest". Login required
+router.post('/cancelsentfriendrequest', fetchuser, async (req, res) => {
+    try {
+        const userId = req.user.id; // Get the user ID from the request
+        const { friendId } = req.body; // Get the friend ID from the request body
+
+        const user = await User.findById(userId);
+        const friend = await User.findById(friendId);
+
+        if (!user || !friend) {
+            return res.status(404).json({ success: false, error: "User or friend not found" });
+        }
+
+        // Remove friendId from the user's sent requests
+        user.sentRequests = user.sentRequests.filter(id => id.toString() !== friendId);
+        // Remove userId from the friend's friend requests
+        friend.friendRequests = friend.friendRequests.filter(id => id.toString() !== userId);
+
+        await user.save();
+        await friend.save();
+
+        return res.status(200).json({ success: true, message: "Friend request cancelled", sentRequests: user.sentRequests });
+    } catch (error) {
+        console.error("Error in cancelsentfriendrequest:", error);
+        res.status(500).send({ success: false, error: "Internal Server Error" });
+    }
+});
 
 module.exports = router;
