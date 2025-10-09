@@ -52,6 +52,7 @@ io.on("connection", (socket) => {
 
     // deliver to receiver
     io.to(data.receiver._id).emit("receiveMessage", data);
+    io.to(data.sender._id).emit("receiveMessage", data);
   });
 
   socket.on("disconnect", () => {
