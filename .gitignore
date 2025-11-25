@@ -17,6 +17,8 @@
 /.DS_Store
 # Exclude migration script from version control
 scripts/migration.js
+uploads/
+
 
 
         

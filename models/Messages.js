@@ -12,9 +12,19 @@ const MessageSchema = new Schema({
         ref: 'user',
         required: true
     },
+    types:{
+        type: String,
+        enum: ['text', 'image', 'video', 'file', 'audio', "multiple"],
+        default: 'text'
+        
+    },
     message: {
         type: String,
         required: true
+    },
+    public_id:{
+        type: String,
+        default: null
     },
     date: {
         type: Date,

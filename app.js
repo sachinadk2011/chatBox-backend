@@ -11,6 +11,7 @@ connecttomoongo();
  const port = process.env.PORT;
 
 app.use(cors());
+//app.use('/uploads', express.static('uploads')); // optional
 app.use(express.json()); // for parsing application/json
 app.use(express.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
 app.use(express.static('public')); // for serving static files
