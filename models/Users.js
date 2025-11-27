@@ -12,9 +12,16 @@ const UserSchema = new Schema({
         required: true,
         unique: true
     },
+    googleUser:{
+        type: Boolean,
+        default: false
+    },
     password: {
         type: String,
-        required: true
+        default: null,
+        required: function() {
+            return !this.googleUser;
+        } 
     },
     friends: {
         type: [moongoose.Schema.Types.ObjectId],
