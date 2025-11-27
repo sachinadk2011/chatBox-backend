@@ -1,4 +1,3 @@
-const { profile } = require('console');
 const moongoose = require('mongoose');
 const { Schema } = moongoose;
 
