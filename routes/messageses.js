@@ -6,7 +6,6 @@ const fetchuser = require('../middleware/fetchuser');
 const checkFriends = require('../middleware/checkFriends');
 const upload = require('../middleware/uploadFiles');
 const cloudinary = require('../configuration/cloudinaryConfig');
-const { console } = require('inspector');
 
 
 //Route 1: fetch all user messages using: GET "/api/messages/fetchallmessages". Login required

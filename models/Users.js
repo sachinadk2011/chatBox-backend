@@ -1,5 +1,5 @@
+const { profile } = require('console');
 const moongoose = require('mongoose');
-const { ref } = require('process');
 const { Schema } = moongoose;
 
 const UserSchema = new Schema({
@@ -45,7 +45,23 @@ const UserSchema = new Schema({
     status: {
         type: Boolean,
         default: false
-      }
+      },
+      onlineStatus:{
+        type: Boolean,
+        default: false
+      },
+      lastActive:{
+        type: Date,
+        default: null
+      },
+      profile_Url:{
+        type: String,
+        default: null
+      },
+      public_id:{
+        type: String,
+        default: null
+    }
 });
 UserSchema.index({ name: 'text' });//only name field is indexed for searching
 const User = moongoose.model('user', UserSchema);

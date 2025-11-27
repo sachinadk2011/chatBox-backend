@@ -2,8 +2,9 @@ const connecttomoongo = require('./db');
 const express = require('express');
 const cors = require('cors');
 const updateSchema = require('./scripts/migration')
-const http = require('http');  // 👈 needed for socket.io
+const http = require('http');  
 const { Server } = require('socket.io');
+const User = require('./models/Users');
 
 connecttomoongo();
 //updateSchema(); // Run the migration script to add new fields to the User schema in database
@@ -11,7 +12,7 @@ connecttomoongo();
  const port = process.env.PORT;
 
 app.use(cors());
-//app.use('/uploads', express.static('uploads')); // optional
+
 app.use(express.json()); // for parsing application/json
 app.use(express.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
 app.use(express.static('public')); // for serving static files
@@ -40,30 +41,51 @@ io.on("connection", (socket) => {
   console.log("A user connected: ", socket.id);
 
   // user joins their "room" (userId = unique)
-  socket.on("joinRoom", (userId) => {
+  socket.on("joinRoom", async (userId) => {
+    socket.userId = userId;
     socket.join(userId);
     console.log(`User ${userId} joined room`);
+    // Mark user online
+   await User.findByIdAndUpdate(userId, {
+    onlineStatus: true,
+    lastActive: new Date()
   });
+  });
+
+  // update lastActive periodically (frontend should emit "alive")
+  socket.on("alive", async () => {
+    if (!socket.userId) return;
+    await User.findByIdAndUpdate(socket.userId, {
+      lastActive: new Date()
+    });
+  });
+
 
   // listen for messages
   socket.on("sendMessage", (data) => {
     console.log("Message received: ", data);
 
-    
-
-    // deliver to receiver
+  // deliver to receiver
     io.to(data.receiver._id).emit("receiveMessage", data);
     io.to(data.sender._id).emit("receiveMessage", data);
   });
 
-  socket.on("disconnect", () => {
+  socket.on("disconnect", async () => {
     console.log("User disconnected: ", socket.id);
+
+    if (!socket.userId) return;
+
+    await User.findByIdAndUpdate(socket.userId, {
+      onlineStatus: false,
+      lastActive: new Date()
+    });
   });
 });
 
 // start the server with both Express + Socket.IO
-server.listen(port, () => {
+server.listen(port, async() => {
   console.log(`Server running on port ${port}`);
+
 });
 
 

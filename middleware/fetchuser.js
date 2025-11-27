@@ -19,7 +19,7 @@ const fetchuser = async (req, res, next) => {
 
     if (userId) {
       try {
-        await User.findByIdAndUpdate(userId, { status: "false" });
+        await User.findByIdAndUpdate(userId, { onlineStatus: false });
       } catch (dbErr) {
         console.error("Failed to update user status:", dbErr.message);
       }
