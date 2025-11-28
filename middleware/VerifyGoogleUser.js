@@ -5,7 +5,7 @@ const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const client = new OAuth2Client(CLIENT_ID, CLIENT_SECRET);
 
 const VerifyGoogleUser = async (req, res, next) => {
-    const token = req.header('Authorization').replace('Bearer ', '');
+    const token = req.header("auth-token");
     try {
         const ticket = await client.verifyIdToken({
             idToken: token,

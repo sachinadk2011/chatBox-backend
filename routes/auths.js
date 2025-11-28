@@ -111,7 +111,7 @@ router.get("/getuser", fetchuser, async (req, res) => {
       return res.status(404).json({ success: false, error: "Account not found" });
     }
 
-    return res.status(200).send({ success: true, user:{name: user.name, email: user.email, id: user._id, onlineStatus: user.onlineStatus, lastActive: user.lastActive}, profile_Url: user.profile_Url, public_id: user.public_id });
+    return res.status(200).send({ success: true, user:{name: user.name, email: user.email, id: user._id, onlineStatus: user.onlineStatus, lastActive: user.lastActive, profile_Url: user.profile_Url, public_id: user.public_id }});
     } catch (error) {
         console.error(error);
         return res.status(500).send({success: false, error:"Internal Server Error"});
@@ -137,6 +137,9 @@ router.post('/googleLogin',VerifyGoogleUser, async (req, res) => {
         });
         message = "Successfully signed up with Google";
     }else{
+        if(!user.googleUser){
+            user.googleUser = true;
+        }
         // login with google
         user.onlineStatus = true;
         user.lastActive = new Date();

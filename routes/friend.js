@@ -7,9 +7,11 @@ const checkFriends = require('../middleware/checkFriends');
 
 
 
-const mutualFriends = (user,otherUser) => {
+
+const mutualFriends = async (user,otherUser) => {
     const mutualfrd = otherUser.friends.filter(frd=>user.friends.map(uf=> uf._id.toString()).includes(frd._id.toString())).map(frd=> ({name: frd.name, id: frd._id, email: frd.email}));
-    return {...otherUser._doc, mutualfriends: mutualfrd, mutualfrdlen: mutualfrd.length} ;
+    const profile_Url = await User.findById(otherUser._id).select('profile_Url');
+    return {...otherUser._doc, mutualfriends: mutualfrd, mutualfrdlen: mutualfrd.length, profile_Url: profile_Url.profile_Url }; ;
 
 }
 
@@ -22,7 +24,7 @@ router.get('/fetchallfriends', fetchuser, async (req, res) => {
             return res.status(404).json({ success: false, error: "User not found" });
         }
         let userFriends = user.friends;
-            userFriends = userFriends.map(frd => mutualFriends(user, frd)); // Map friends to include mutual friends
+            userFriends = await Promise.all(userFriends.map(frd => mutualFriends(user, frd))); // Map friends to include mutual friends
             console.log("Friends with Mutual Friends:", userFriends);
 
         return res.status(200).json({ success: true, friends: userFriends }); // Return the friends list
@@ -176,11 +178,13 @@ router.get('/suggestfriends', fetchuser, async(req,res)=>{
 
         let suggestionFriends = await User.find({_id: {$nin: excludedFrd}}).select('name _id email friends').populate('friends', 'name');
         
-        suggestionFriends= suggestionFriends.map(friend=>{
+        suggestionFriends= await Promise.all(suggestionFriends.map(async friend=>{
             const mutualFriends = friend.friends.filter(frd=> 
-                userFriend.friends.map(uf=> uf._id.toString()).includes(frd._id.toString())).map(frd=> ({name: frd.name, id: frd._id}));
-                return {...friend._doc, mutualFriends, mutualfrdlen: mutualFriends.length};
-            })
+                userFriend.friends.map(uf=> uf._id.toString()).includes(frd._id.toString())).map(frd=> ({name: frd.name, id: frd._id, email: frd.email}));
+                const profile_Url = await User.findById(friend._id).select('profile_Url');
+                
+                return {...friend._doc, mutualFriends, mutualfrdlen: mutualFriends.length, profile_Url: profile_Url.profile_Url };
+            }))
             console.log(suggestionFriends);
 
 
