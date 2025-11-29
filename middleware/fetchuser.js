@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET;
 
 const fetchuser = async (req, res, next) => {
   //get the user from jwt token and add id 
@@ -9,28 +9,16 @@ const fetchuser = async (req, res, next) => {
     return res.status(401).send({ success: false, message: "please autheticate using valide token" });
   }
   try {
-    const data = await jwt.verify(token, JWT_SECRET);
+    const data = await jwt.verify(token, JWT_ACCESS_SECRET);
     req.user = data.user;
     next();
   } catch (error) {
-  if (error.name === "TokenExpiredError") {
-    const decoded = jwt.decode(token);
-    const userId = decoded?.user?.id;
+    
 
-    if (userId) {
-      try {
-        await User.findByIdAndUpdate(userId, { onlineStatus: false });
-      } catch (dbErr) {
-        console.error("Failed to update user status:", dbErr.message);
-      }
-    }
-
-    return res.status(401).send({success: false, message: "Session expired. Please log in again." });
+     return res.status(401).send({ success: false, message: "Invalid authentication token." });
   }
 
-  return res.status(401).send({ success: false, message: "Invalid authentication token." });
-}
-
+ 
 };
 
 module.exports = fetchuser;

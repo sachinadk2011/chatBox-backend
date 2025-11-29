@@ -5,14 +5,18 @@ const updateSchema = require('./scripts/migration')
 const http = require('http');  
 const { Server } = require('socket.io');
 const User = require('./models/Users');
+const cookieParser = require('cookie-parser');
 
 connecttomoongo();
 //updateSchema(); // Run the migration script to add new fields to the User schema in database
  const app = express();
  const port = process.env.PORT;
 
-app.use(cors());
-
+app.use(cors({
+  origin: "http://localhost:3000",
+  credentials: true   // allow sending cookies
+}));
+app.use(cookieParser());
 app.use(express.json()); // for parsing application/json
 app.use(express.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
 app.use(express.static('public')); // for serving static files

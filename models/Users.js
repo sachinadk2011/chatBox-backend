@@ -60,6 +60,10 @@ const UserSchema = new Schema({
       public_id:{
         type: String,
         default: null
+    },
+    refreshToken:{
+        type: String,
+        default: null
     }
 });
 UserSchema.index({ name: 'text' });//only name field is indexed for searching
