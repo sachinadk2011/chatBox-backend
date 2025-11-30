@@ -207,16 +207,17 @@ router.post("/googleLogin", VerifyGoogleUser, async (req, res) => {
       await user.save();
       message = "Successfully logged in with Google";
     }
+    if (!user.profile_Url && !user.public_id) {
     const result = await cloudinary.uploader.upload(picture, {
       resource_type: "image",
       folder: "chatbox_profiles",
     });
 
-    const AccessToken = await AccessTokenGenerator(user);
-    const RefreshToken = await RefreshTokenGenerator(user);
     user.profile_Url = result.secure_url;
     user.public_id = result.public_id;
-
+  }
+    const AccessToken = await AccessTokenGenerator(user);
+    const RefreshToken = await RefreshTokenGenerator(user);
     user.refreshToken = RefreshToken;
     await user.save();
     res.cookie('refreshToken', RefreshToken, {
