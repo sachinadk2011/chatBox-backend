@@ -62,6 +62,7 @@ io.on("connection", (socket) => {
     await User.findByIdAndUpdate(socket.userId, {
       lastActive: new Date()
     });
+    console.log(`Updated lastActive for user ${socket.userId}`);
   });
 
 
