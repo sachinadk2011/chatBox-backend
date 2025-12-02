@@ -13,6 +13,8 @@ const rateLimit = require("express-rate-limit");
 const cloudinary = require("../configuration/cloudinaryConfig");
 const jwt = require("jsonwebtoken");
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
+const generateOtp = require("../utils/generateOtpCode");
+const sendEmail = require("../utils/sendEmail");
 
 router.use(express.json()); // Re-enable the JSON middleware
 
@@ -21,6 +23,7 @@ const loginLimiter = rateLimit({
   max: 5, // Limit each IP to 5 requests per windowMs
   message: "Too many requests from this IP, please try again later.",
 });
+
 
 //Router 1: to create user
 router.post(
@@ -294,6 +297,21 @@ router.post("/logout", fetchuser, async (req, res) => {
       .send({ success: false, error: "Internal Server Error" });
     
   }
+});
+
+
+// router for fake email sending (for testing)
+router.post("/sendTestEmail", async(req, res) => {
+  const { email } = req.body;
+ try{ const otpcode = generateOtp();
+  await sendEmail(email, otpcode);
+  return res.status(200).json({ success: true, message: "Test email sent successfully" });
+}catch(error){
+  console.error(error);
+    return res
+      .status(500)
+      .send({ success: false, error: error || "Internal Server Error" });
+}
 });
 
 module.exports = router;
