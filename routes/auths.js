@@ -15,14 +15,10 @@ const jwt = require("jsonwebtoken");
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
 const generateOtp = require("../utils/generateOtpCode");
 const sendEmail = require("../utils/sendEmail");
-
+const {loginLimiter, deleteLimiter, signUpLimiter, VerifyOtpLimiter, forgetpwLimiter} = require("../middleware/ratelimiter");
 router.use(express.json()); // Re-enable the JSON middleware
 
-const loginLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 requests per windowMs
-  message: "Too many requests from this IP, please try again later.",
-});
+
 
 
 //Router 1: to create user
@@ -34,6 +30,7 @@ router.post(
 
     body("password", "Password must be alphanumeric").isLength({ min: 8 }),
   ],
+  signUpLimiter,
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -57,7 +54,7 @@ router.post(
         name: req.body.name,
         email: req.body.email,
         password: securePassword,
-        status: true,
+        
         onlineStatus: true,
         lastActive: new Date(),
       });
@@ -89,6 +86,86 @@ router.post(
     }
   }
 );
+
+// Router 2: verify user email and login
+// Route-2:  for verifying user with otp using post method "/api/auth/verify-otp"
+router.post("/verify-otp",VerifyOtpLimiter, async (req, res) => {
+  
+  const { email, OtpCode } = req.body;
+  
+
+  // Set a timeout to clear the OTP after 10 minutes (600,000 milliseconds)
+  setTimeout(async () => {
+    await User.updateOne({ email }, { $set: { otpExpiry: false } });
+  }, 600000);
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    // console.log("User Found: verify otp", user);
+    // console.log("OTP from DB:", user.OtpCode);
+    // console.log("OTP from Request:", OtpCode);
+    // console.log("OTP match:", user.OtpCode === OtpCode);
+    // console.log("Email Match:", user.email === email);
+    if (user.OtpCode !== OtpCode){
+      return res.status(400).json({ success: false, message: "Invalid OTP" });
+    }
+
+    if ( user.otpExpiry === false) {
+      return res
+        .status(400)
+        .json({ success: false, message: "OTP has expired" });
+    } 
+     if ( user.email === email) {
+      user.status = true; // Mark user as verified
+      user.OtpCode = null; // Clear OTP
+      user.otpExpiry = false;
+      await user.save();
+      // console.log("User Found:", user);
+
+      
+
+return res.status(200).json({
+  success: true,
+  message: "OTP verified successfully",
+});
+    } 
+  } catch (error) {
+    // console.error(error.message, OtpCode);
+    return res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+});
+
+//Route-3 for resend verification otp code taht expire using post method "/api/auth/resend"
+router.post("/resend",VerifyOtpLimiter, async (req, res) => {
+  try {
+    const otpEmail = req.body.email; //taking email
+    // Generate OTP for the new user
+    const otpcode = generateOtp();
+
+    //update otp of  user
+    const user = await User.updateOne(
+      { email: otpEmail },
+      { $set: { OtpCode: otpcode, otpTime: 1 } }
+    ); // updating only those which need this
+
+    const sendotp = await sendOTP(req.body.email, otpcode);
+     if (sendotp){
+    return res.status(200).json({ success: true, message: "Verification Code is sent succefully" });
+    }else{
+      return res.status(500).json({ success: sendotp, message: "Verification Code failed to sent" });
+    }
+  } catch (error) {
+    // console.error(error.message);
+    return res.status(500).send({success: false, message:"Internal Server Error"});
+  }
+});
+
 
 //Rout 2: login user
 router.post(

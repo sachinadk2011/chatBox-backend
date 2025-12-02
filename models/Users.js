@@ -64,6 +64,14 @@ const UserSchema = new Schema({
     refreshToken:{
         type: String,
         default: null
+    },
+    otpCode:{
+        type: String,
+        default: null
+    },
+    otpExpiry:{
+        type: Boolean,
+        default: false
     }
 });
 UserSchema.index({ name: 'text' });//only name field is indexed for searching
