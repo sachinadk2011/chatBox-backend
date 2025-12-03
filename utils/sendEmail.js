@@ -23,9 +23,10 @@ const sendEmail = async(userEmail, otpcode) => {
 `,
     });
     console.log('Email sent successfully:', email);
+    return { success: true };
   } catch (error) {
     console.error('Error sending email:', error);
-    return error.error;
+    return { success: false, error: error.message || error.error || "Error sending email" };
   }
 }
 

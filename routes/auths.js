@@ -58,31 +58,32 @@ router.post(
         onlineStatus: true,
         lastActive: new Date(),
       });
-      const AccessToken = await AccessTokenGenerator(user);
-      const RefreshToken = await RefreshTokenGenerator(user);
-      user.refreshToken = RefreshToken;
+
+      const otpcode = generateOtp();
+      const emailsend =await sendEmail(req.body.email, otpcode);
+       if (!emailsend.success){
+        return  res.status(400).json({ success: false, message: "Verification Code failed to sent" });
+       }
+      user.otpCode = otpcode;
+      user.otpExpiry = true;
       await user.save();
 
-      res.cookie('refreshToken', RefreshToken, {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'Strict',
-  maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-});
+      
 
 
       return res
         .status(200)
         .json({
           success: true,
-          token: AccessToken,
-          message: "Successfully created user",
+          
+          message: "Verification Code is sent successfully",
         });
     } catch (error) {
       console.error(error);
+      
       return res
         .status(500)
-        .send({ success: false, error: "Internal Server Error" });
+        .send({ success: false, error:error || error.message || "Internal Server Error" });
     }
   }
 );
@@ -91,7 +92,7 @@ router.post(
 // Route-2:  for verifying user with otp using post method "/api/auth/verify-otp"
 router.post("/verify-otp",VerifyOtpLimiter, async (req, res) => {
   
-  const { email, OtpCode } = req.body;
+  const { email, otpCode } = req.body;
   
 
   // Set a timeout to clear the OTP after 10 minutes (600,000 milliseconds)
@@ -108,11 +109,11 @@ router.post("/verify-otp",VerifyOtpLimiter, async (req, res) => {
     }
 
     // console.log("User Found: verify otp", user);
-    // console.log("OTP from DB:", user.OtpCode);
-    // console.log("OTP from Request:", OtpCode);
-    // console.log("OTP match:", user.OtpCode === OtpCode);
+    // console.log("OTP from DB:", user.otpCode);
+    // console.log("OTP from Request:", otpCode);
+    // console.log("OTP match:", user.otpCode === otpCode);
     // console.log("Email Match:", user.email === email);
-    if (user.OtpCode !== OtpCode){
+    if (user.otpCode !== otpCode){
       return res.status(400).json({ success: false, message: "Invalid OTP" });
     }
 
@@ -121,20 +122,35 @@ router.post("/verify-otp",VerifyOtpLimiter, async (req, res) => {
         .status(400)
         .json({ success: false, message: "OTP has expired" });
     } 
-     if ( user.email === email) {
+     if ( user.email !== email) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid Email" });
+     }
       user.status = true; // Mark user as verified
-      user.OtpCode = null; // Clear OTP
+      user.otpCode = null; // Clear OTP
       user.otpExpiry = false;
       await user.save();
       // console.log("User Found:", user);
 
-      
+      const AccessToken = await AccessTokenGenerator(user);
+      const RefreshToken = await RefreshTokenGenerator(user);
+      user.refreshToken = RefreshToken;
+      await user.save();
+
+      res.cookie('refreshToken', RefreshToken, {
+  httpOnly: true,
+  secure: false,
+  sameSite: 'Strict',
+  maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+});
 
 return res.status(200).json({
   success: true,
-  message: "OTP verified successfully",
+  token: AccessToken,
+  message: "Successfully user created and verified the email",
 });
-    } 
+    
   } catch (error) {
     // console.error(error.message, OtpCode);
     return res.status(500).json({ success: false, message: "Internal Server Error" });
@@ -146,19 +162,19 @@ router.post("/resend",VerifyOtpLimiter, async (req, res) => {
   try {
     const otpEmail = req.body.email; //taking email
     // Generate OTP for the new user
+    
     const otpcode = generateOtp();
-
     //update otp of  user
     const user = await User.updateOne(
       { email: otpEmail },
-      { $set: { OtpCode: otpcode, otpTime: 1 } }
+      { $set: { otpCode: otpcode, otpExpiry: true } }
     ); // updating only those which need this
 
-    const sendotp = await sendOTP(req.body.email, otpcode);
-     if (sendotp){
+      const emailsend =await sendEmail(req.body.email, otpcode);
+     if (emailsend){
     return res.status(200).json({ success: true, message: "Verification Code is sent succefully" });
     }else{
-      return res.status(500).json({ success: sendotp, message: "Verification Code failed to sent" });
+      return res.status(400).json({ success: false, message: "Verification Code failed to sent" });
     }
   } catch (error) {
     // console.error(error.message);
