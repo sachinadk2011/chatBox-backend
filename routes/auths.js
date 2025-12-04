@@ -17,6 +17,7 @@ const generateOtp = require("../utils/generateOtpCode");
 const sendEmail = require("../utils/sendEmail");
 const {loginLimiter, deleteLimiter, signUpLimiter, VerifyOtpLimiter, forgetpwLimiter} = require("../middleware/ratelimiter");
 router.use(express.json()); // Re-enable the JSON middleware
+const validatePassword = require("../utils/ValidatePassword");
 
 
 
@@ -97,7 +98,7 @@ router.post("/verify-otp",VerifyOtpLimiter, async (req, res) => {
 
   // Set a timeout to clear the OTP after 10 minutes (600,000 milliseconds)
   setTimeout(async () => {
-    await User.updateOne({ email }, { $set: { otpExpiry: false } });
+    await User.updateOne({ email }, { $set: {otpCode: null, otpExpiry: false } });
   }, 600000);
 
   try {
@@ -113,15 +114,16 @@ router.post("/verify-otp",VerifyOtpLimiter, async (req, res) => {
     // console.log("OTP from Request:", otpCode);
     // console.log("OTP match:", user.otpCode === otpCode);
     // console.log("Email Match:", user.email === email);
-    if (user.otpCode !== otpCode){
-      return res.status(400).json({ success: false, message: "Invalid OTP" });
-    }
-
     if ( user.otpExpiry === false) {
+      
       return res
         .status(400)
         .json({ success: false, message: "OTP has expired" });
     } 
+    if (user.otpCode !== otpCode){
+      return res.status(400).json({ success: false, message: "Invalid OTP" });
+    }
+
      if ( user.email !== email) {
         return res
           .status(400)
@@ -183,7 +185,7 @@ router.post("/resend",VerifyOtpLimiter, async (req, res) => {
 });
 
 
-//Rout 2: login user
+//Rout 4: login user
 router.post(
   "/loginuser",
   loginLimiter,
@@ -242,7 +244,7 @@ router.post(
   }
 );
 
-//Router 3: get logged in user details
+//Router 5: get logged in user details
 router.get("/getuser", fetchuser, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -276,7 +278,7 @@ router.get("/getuser", fetchuser, async (req, res) => {
   }
 });
 
-// Router 4: signin or signup with google
+// Router 6: signin or signup with google
 router.post("/googleLogin", VerifyGoogleUser, async (req, res) => {
   try {
     const { name, email, picture } = req.user;
@@ -337,7 +339,7 @@ router.post("/googleLogin", VerifyGoogleUser, async (req, res) => {
   }
 });
 
-// Router 5: Token refresh
+// Router 7: Token refresh
 router.post("/token", async (req, res) => {
   const refreshToken = req.cookies.refreshToken;
   if (!refreshToken) {
@@ -367,7 +369,7 @@ router.post("/token", async (req, res) => {
   }
 });
 
-// Router 6: Logout user
+// Router 8: Logout user
 router.post("/logout", fetchuser, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -392,19 +394,93 @@ router.post("/logout", fetchuser, async (req, res) => {
   }
 });
 
+//Router 9: forget password
+router.post("/forgetpassword", forgetpwLimiter, async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+    const otpcode = generateOtp();
+      const emailsend =await sendEmail(req.body.email, otpcode);
+       if (!emailsend.success){
+        return  res.status(400).json({ success: false, message: "Verification Code failed to sent" });
+       }
+      user.otpCode = otpcode;
+      user.otpExpiry = true;
+      await user.save();
 
-// router for fake email sending (for testing)
-router.post("/sendTestEmail", async(req, res) => {
-  const { email } = req.body;
- try{ const otpcode = generateOtp();
-  await sendEmail(email, otpcode);
-  return res.status(200).json({ success: true, message: "Test email sent successfully" });
-}catch(error){
-  console.error(error);
+      
+
+
+      return res
+        .status(200)
+        .json({
+          success: true,
+          
+          message: "Verification Code is sent successfully",
+        });
+
+    
+  } catch (error) {
+    console.error(error);
     return res
       .status(500)
-      .send({ success: false, error: error || "Internal Server Error" });
-}
+      .send({ success: false, error: "Internal Server Error" });
+    
+  }
 });
+
+// Router 10: reset password
+router.post("/resetpassword",  async (req, res) => {
+  try{
+   const { email, newPassword, oldPassword = null } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+    const oldHashedPassword = user.password;
+    if (oldPassword) {
+      const isMatch = await bcrypt.compare(oldPassword, oldHashedPassword);
+      if (!isMatch) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Password is incorrect" });
+      }
+    }
+    
+    
+    const validation = validatePassword(newPassword, user);
+    if (!validation.isValid) {
+      return res.status(400).json({ success: false, errors: validation.errors });
+    }
+    const isSamePassword = await bcrypt.compare(newPassword, oldHashedPassword);
+    if (isSamePassword) {
+      return res
+        .status(400)
+        .json({ success: false, message: "New password must be different from the old password" });
+    }
+    const securePassword = await bcrypt.hash(
+      newPassword,
+      await bcrypt.genSalt(10)
+    );
+    user.password = securePassword;
+    await user.save();
+    return res
+      .status(200)
+      .json({ success: true, message: "Password updated successfully" });
+  }catch (error) {
+    console.error(error);
+    return res
+      .status(500)
+      .send({ success: false, error: "Internal Server Error" });
+  }
+});
+
 
 module.exports = router;
