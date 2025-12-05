@@ -62,18 +62,21 @@ router.post("/sendmessage", fetchuser,upload.array('files',5), checkFriends, [
         if(req.files && req.files.length > 0){
             console.log("File uploaded: ", req.files);
         // Accept only images and videos
-    if (
-        !file.mimetype.startsWith("image/") &&
-        !file.mimetype.startsWith("video/")
-    ) {
+    if (!req.files.every(file => 
+        file.mimetype.startsWith('image/') || 
+        file.mimetype.startsWith('video/') )) {
+        // Delete uploaded temp files
+        for (const file of req.files) {
+            await fs.promises.unlink(file.path);
+        }
         return res.status(400).json({ 
             error: "Only image and video files are supported." 
         });
     }
-           
            // handle multiple files
     let uploadedFiles = [];
     for (const file of req.files) {
+        try{
         const result = await cloudinary.uploader.upload(file.path, {
             resource_type: "auto",
             folder: "chatbox_files"
@@ -87,6 +90,10 @@ router.post("/sendmessage", fetchuser,upload.array('files',5), checkFriends, [
                   file.mimetype.startsWith("video") ? "video" :
                   file.mimetype.startsWith("audio") ? "audio" : "file"
         });
+    }catch(error){
+        console.error("Cloudinary upload failed for", file.originalname, err);
+        return res.status(500).json({ success: false, error: `Failed to upload ${file.originalname}` });
+    }
     }
 
           // If only one file, save it as message
