@@ -61,6 +61,15 @@ router.post("/sendmessage", fetchuser,upload.array('files',5), checkFriends, [
         });
         if(req.files && req.files.length > 0){
             console.log("File uploaded: ", req.files);
+        // Accept only images and videos
+    if (
+        !file.mimetype.startsWith("image/") &&
+        !file.mimetype.startsWith("video/")
+    ) {
+        return res.status(400).json({ 
+            error: "Only image and video files are supported." 
+        });
+    }
            
            // handle multiple files
     let uploadedFiles = [];
@@ -69,6 +78,7 @@ router.post("/sendmessage", fetchuser,upload.array('files',5), checkFriends, [
             resource_type: "auto",
             folder: "chatbox_files"
         });
+        
         console.log("Cloudinary upload result: ", result);
         uploadedFiles.push({
             url: result.secure_url,
