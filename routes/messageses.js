@@ -6,6 +6,7 @@ const fetchuser = require('../middleware/fetchuser');
 const checkFriends = require('../middleware/checkFriends');
 const upload = require('../middleware/uploadFiles');
 const cloudinary = require('../configuration/cloudinaryConfig');
+const fs = require('fs');
 
 
 //Route 1: fetch all user messages using: GET "/api/messages/fetchallmessages". Login required
@@ -102,6 +103,10 @@ let savedMessage = await newMessage.save();
 // Then populate
 savedMessage = await savedMessage.populate('receiver', 'name');
 savedMessage = await savedMessage.populate('sender', 'name');
+ // Delete all local temp files
+for (const file of req.files) {
+    await fs.promises.unlink(file.path);
+}
 
         if(!savedMessage) {
             return res.status(400).json({ success: false, error: "Unable to send message" });
