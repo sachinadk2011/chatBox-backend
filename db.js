@@ -1,5 +1,5 @@
 const moongoose = require('mongoose');
-const moongose_url = process.env.DB_URL;
+const moongose_url = process.env.PRODUCTION_DB_URL;
 
 const connecttomoongo = async ()=>{
   try {

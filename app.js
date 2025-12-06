@@ -11,9 +11,9 @@ connecttomoongo();
 //updateSchema(); // Run the migration script to add new fields to the User schema in database
  const app = express();
  const port = process.env.PORT;
-
+const FRONTEND_URL = process.env.FRONTEND_URL;
 app.use(cors({
-  origin: "http://localhost:3000",
+  origin: FRONTEND_URL,
   credentials: true   // allow sending cookies
 }));
 app.use(cookieParser());
@@ -35,7 +35,7 @@ const server = http.createServer(app);
 // 👉 Setup Socket.IO
 const io = new Server(server, {
   cors: {
-    origin: "*", // In production, change to your frontend domain
+    origin: FRONTEND_URL, // In production, change to your frontend domain
     methods: ["GET", "POST"]
   }
 });
