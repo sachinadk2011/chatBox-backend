@@ -1,7 +1,7 @@
 const connecttomoongo = require('./db');
 const express = require('express');
 const cors = require('cors');
-const updateSchema = require('./scripts/migration')
+//const updateSchema = require('./scripts/migration')
 const http = require('http');  
 const { Server } = require('socket.io');
 const User = require('./models/Users');
