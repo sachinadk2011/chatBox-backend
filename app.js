@@ -11,7 +11,8 @@ connecttomoongo();
 //updateSchema(); // Run the migration script to add new fields to the User schema in database
  const app = express();
  const port = process.env.PORT;
-const FRONTEND_URL = process.env.FRONTEND_URL;
+//const FRONTEND_URL = process.env.FRONTEND_URL;
+const FRONTEND_URL = process.env.FONTEND_URL;
 app.use(cors({
   origin: FRONTEND_URL,
   credentials: true   // allow sending cookies
