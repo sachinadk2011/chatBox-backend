@@ -1,18 +1,47 @@
 const connecttomoongo = require('./db');
 const express = require('express');
 const cors = require('cors');
-//const updateSchema = require('./scripts/migration')
 const http = require('http');  
 const { Server } = require('socket.io');
 const User = require('./models/Users');
+const Message = require('./models/Messages');
 const cookieParser = require('cookie-parser');
 
 connecttomoongo();
+
+// ── One-time migration: convert old Boolean status → String enum ────────────
+// Old schema: status: Boolean (false = unread, true = read)
+// New schema: status: String enum ('sent','delivered','read')
+// Any document with a non-string status gets normalised when migration is enabled.
+if (process.env.RUN_STATUS_MIGRATION === 'true') {
+  (async () => {
+    try {
+      // Normalise any non-string / legacy status values to 'read'
+      await Message.updateMany(
+        {
+          $or: [
+            // Old boolean statuses
+            { status: { $type: 'bool' } },
+            // Explicit null
+            { status: null },
+            // Missing field
+            { status: { $exists: false } }
+          ]
+        },
+        { $set: { status: 'read' } }
+      );
+      console.log('[Migration] Old boolean/null status values normalised to string enum.');
+    } catch (err) {
+      console.error('[Migration] Failed:', err.message);
+    }
+  })();
+}
 //updateSchema(); // Run the migration script to add new fields to the User schema in database
  const app = express();
  const port = process.env.PORT;
+// Support both spellings (FRONTEND_URL and FONTEND_URL)
 const FRONTEND_URL = process.env.FRONTEND_URL;
-//const FRONTEND_URL = process.env.FONTEND_URL;
+//const FRONTEND_URL = process.env.DEV_URL || 'http://localhost:3000';
 app.use(cors({
   origin: FRONTEND_URL,
   credentials: true   // allow sending cookies
@@ -45,6 +74,13 @@ const io = new Server(server, {
 // Socket.IO logic
 io.on("connection", (socket) => {
   console.log("A user connected: ", socket.id);
+
+  // Mark messages as read — receiver tells sender
+  socket.on('markRead', ({ senderId, receiverId }) => {
+    // Emit to original sender so their ticks turn blue immediately
+    io.to(senderId).emit('messagesRead', { by: receiverId });
+    console.log(`markRead: ${receiverId} read messages from ${senderId}`);
+  });
 
   // user joins their "room" (userId = unique)
   socket.on("joinRoom", async (userId) => {

@@ -8,159 +8,147 @@ const upload = require('../middleware/uploadFiles');
 const cloudinary = require('../configuration/cloudinaryConfig');
 const fs = require('fs');
 
-
-//Route 1: fetch all user messages using: GET "/api/messages/fetchallmessages". Login required
+// Route 1: Fetch all messages (for sidebar preview)
 router.get('/fetchallmessages', fetchuser, async (req, res) => {
-   
     try {
         const messages = await Message.find({
-            $or:[
-                { sender: req.user.id },
-                { receiver: req.user.id }
-             ]}
-        ).populate('receiver', 'name').populate('sender', 'name');
-        if (!messages) {
-            return res.status(404).json({ success: false, error: "No messages found" });
-        }
-       return  res.status(200).json({ success: true, messages: messages, message: "Messages fetched successfully" });
+            $or: [{ sender: req.user.id }, { receiver: req.user.id }]
+        }).populate('receiver', 'name').populate('sender', 'name');
+        if (!messages) return res.status(404).json({ success: false, error: "No messages found" });
+        return res.status(200).json({ success: true, messages });
     } catch (error) {
         console.error(error);
-       return  res.status(500).send({ success: false, error: "Internal Server Error" });
+        return res.status(500).json({ success: false, error: "Internal Server Error" });
     }
 });
 
-//Route 2: send a message using: POST "/api/messages/sendmessage". Login required
-router.post("/sendmessage", fetchuser,upload.array('files',5), checkFriends, [
-    // Only validate message if no file exists
+// Route 2: Fetch paginated conversation with a specific user (for chat window)
+router.get('/conversation/:otherUserId', fetchuser, async (req, res) => {
+    try {
+        const { otherUserId } = req.params;
+        const page  = Math.max(1, parseInt(req.query.page, 10)  || 1);
+        const rawLimit = parseInt(req.query.limit, 10);
+        const limit = Math.max(1, Math.min(50, rawLimit || 20));
+        const skip  = (page - 1) * limit;
+
+        const filter = {
+            $or: [
+                { sender: req.user.id, receiver: otherUserId },
+                { sender: otherUserId, receiver: req.user.id }
+            ]
+        };
+        const total = await Message.countDocuments(filter);
+
+        // Sort newest-first, skip for pagination, then reverse to chronological
+        const messages = await Message.find(filter)
+            .populate('receiver', 'name')
+            .populate('sender', 'name')
+            .sort({ date: -1 })
+            .skip(skip)
+            .limit(limit);
+
+        return res.status(200).json({
+            success: true,
+            messages: messages.reverse(), // chronological order for UI
+            total,
+            page,
+            hasMore: skip + limit < total
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ success: false, error: "Internal Server Error" });
+    }
+});
+
+// Route 3: Send a message
+router.post("/sendmessage", fetchuser, upload.array('files', 5), checkFriends, [
     body('message').custom((value, { req }) => {
-      if ((!req.files || req.files.length === 0) && (!value || value.trim() === '')) {
-        throw new Error('Message content cannot be empty');
-      }
-      return true;
+        if ((!req.files || req.files.length === 0) && (!value || value.trim() === ''))
+            throw new Error('Message cannot be empty');
+        return true;
     }),
-    
-], async(req,res)=>{
-    const validationErrors= validationResult(req);
-    if(!validationErrors.isEmpty()){
-        return res.status(400).json({errors: validationErrors.array()});
-    }
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
     try {
-        
-        const {receiver, message}= req.body;
-        console.log("sendmessage api","Receiver: ", receiver, "Message: ", message, "File: ", req.files, req.body);  
-        
-        if(!receiver){
-            return res.status(400).json({success: false, error: "Receiver not found" });
-        }
-        
-        console.log("Receiver ID: ", receiver, "Message: ", message, "file: ", req.files);
-        const newMessage = new Message({
-            
-            sender: req.user.id,
-            receiver: receiver
-        });
-        if(req.files && req.files.length > 0){
-            console.log("File uploaded: ", req.files);
-        // Accept only images and videos
-    if (!req.files.every(file => 
-        file.mimetype.startsWith('image/') || 
-        file.mimetype.startsWith('video/') )) {
-        // Delete uploaded temp files
-        for (const file of req.files) {
-            await fs.promises.unlink(file.path);
-        }
-        return res.status(400).json({ 
-            error: "Only image and video files are supported." 
-        });
-    }
-           // handle multiple files
-    let uploadedFiles = [];
-    for (const file of req.files) {
-        try{
-        const result = await cloudinary.uploader.upload(file.path, {
-            resource_type: "auto",
-            folder: "chatbox_files"
-        });
-        
-        console.log("Cloudinary upload result: ", result);
-        uploadedFiles.push({
-            url: result.secure_url,
-            public_id: result.public_id,
-            type: file.mimetype.startsWith("image") ? "image" :
-                  file.mimetype.startsWith("video") ? "video" :
-                  file.mimetype.startsWith("audio") ? "audio" : "file"
-        });
-    }catch(error){
-        console.error("Cloudinary upload failed for", file.originalname, err);
-        return res.status(500).json({ success: false, error: `Failed to upload ${file.originalname}` });
-    }
-    }
+        const { receiver, message } = req.body;
+        if (!receiver) return res.status(400).json({ success: false, error: "Receiver not found" });
 
-          // If only one file, save it as message
-    if(uploadedFiles.length === 1){
-        newMessage.message = uploadedFiles[0].url;
-        newMessage.types = uploadedFiles[0].type;
-        newMessage.public_id = uploadedFiles[0].public_id;
-    } else {
-        // For multiple files, you might want to save array of URLs
-        newMessage.message = JSON.stringify(uploadedFiles); // save as JSON string
-        newMessage.types = "multiple";
-    }
+        const newMessage = new Message({ sender: req.user.id, receiver, status: 'sent' });
 
-}
-        else{
-            
+        if (req.files && req.files.length > 0) {
+            const allowed = f => f.mimetype.startsWith('image/') || f.mimetype.startsWith('video/');
+            if (!req.files.every(allowed)) {
+                for (const f of req.files) await fs.promises.unlink(f.path);
+                return res.status(400).json({ error: "Only image and video files are supported." });
+            }
+
+            let uploaded = [];
+            for (const file of req.files) {
+                try {
+                    const result = await cloudinary.uploader.upload(file.path, {
+                        resource_type: "auto", folder: "chatbox_files"
+                    });
+                    uploaded.push({
+                        url: result.secure_url, public_id: result.public_id,
+                        type: file.mimetype.startsWith("image") ? "image"
+                             : file.mimetype.startsWith("video") ? "video" : "file"
+                    });
+                } catch (err) {
+                    console.error("Cloudinary upload failed:", file.originalname, err);
+                    return res.status(500).json({ success: false, error: `Failed to upload ${file.originalname}` });
+                }
+            }
+
+            if (uploaded.length === 1) {
+                newMessage.message  = uploaded[0].url;
+                newMessage.types    = uploaded[0].type;
+                newMessage.public_id = uploaded[0].public_id;
+            } else {
+                newMessage.message = JSON.stringify(uploaded);
+                newMessage.types   = "multiple";
+            }
+        } else {
             newMessage.message = message;
-            newMessage.types = "text";
+            newMessage.types   = "text";
         }
-        
-       // Save first
-let savedMessage = await newMessage.save();
 
-// Then populate
-savedMessage = await savedMessage.populate('receiver', 'name');
-savedMessage = await savedMessage.populate('sender', 'name');
- // Delete all local temp files
-for (const file of req.files) {
-    await fs.promises.unlink(file.path);
-}
+        let saved = await newMessage.save();
+        saved = await saved.populate('receiver', 'name');
+        saved = await saved.populate('sender', 'name');
 
-        if(!savedMessage) {
-            return res.status(400).json({ success: false, error: "Unable to send message" });
-        }
-        
-        return res.status(200).json({ success: true, message: savedMessage });
-        
+        if (req.files?.length) for (const f of req.files) await fs.promises.unlink(f.path);
+
+        if (!saved) return res.status(400).json({ success: false, error: "Unable to send message" });
+        return res.status(200).json({ success: true, message: saved });
+
     } catch (error) {
         console.error(error.message);
-       return  res.status(500).send({ success: false, error: "Internal Server Error" });
-        
+        return res.status(500).json({ success: false, error: "Internal Server Error" });
     }
-})
+});
 
-//Route 3: markasread a mesage using: POST "/api/messages/markasread". Login required
-router.put('/markasread/:senderId', fetchuser, async(req,res)=>{
+// Route 4: Mark messages as read + emit socket event
+router.put('/markasread/:senderId', fetchuser, async (req, res) => {
     try {
-        
         const { senderId } = req.params;
-        if (!senderId) {
-            return res.status(400).json({success: false, error: "Sender ID not found" });
-        }
-       
-        const updateMessage = await Message.updateMany({
-            sender: senderId,
-            receiver: req.user.id,
-            status: false
-        }, { $set: { status: true } });
-        if (updateMessage.modifiedCount === 0) {
-            return res.status(404).json({ success: false, error: "No messages found" });
-        }
-        
-       return  res.status(200).json({ success: true, updateMessage:updateMessage, message: "Messages marked as read" });
+        if (!senderId) return res.status(400).json({ success: false, error: "Sender ID required" });
+
+        await Message.updateMany(
+            { sender: senderId, receiver: req.user.id, status: { $ne: 'read' } },
+            { $set: { status: 'read' } }
+        );
+
+        // Emit real-time event so sender's ticks turn blue instantly
+        const io = req.io || req.app.get('io');
+        if (io) io.to(senderId).emit('messagesRead', { by: req.user.id });
+
+        return res.status(200).json({ success: true, message: "Messages marked as read" });
     } catch (error) {
         console.error(error.message);
-        return  res.status(500).send({"success": false, "error": "Internal Server Error"});
+        return res.status(500).json({ success: false, error: "Internal Server Error" });
     }
-})
+});
 
 module.exports = router;

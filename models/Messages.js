@@ -20,10 +20,16 @@ const MessageSchema = new Schema({
     },
     message: {
         type: String,
-        required: true
+        required: function () {
+            return this.types === 'text';
+        },
+        default: null
     },
     public_id:{
         type: String,
+        required: function () {
+            return ['image', 'video', 'file', 'audio', 'multiple'].includes(this.types);
+        },
         default: null
     },
     date: {
@@ -31,8 +37,9 @@ const MessageSchema = new Schema({
         default: Date.now
     },
     status: {
-        type: Boolean,
-        default: false
+        type: String,
+        enum: ['sent', 'delivered', 'read'],
+        default: 'sent'
     }
 });
 const Message = mongose.model('message', MessageSchema);
