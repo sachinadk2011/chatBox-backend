@@ -20,11 +20,16 @@ const MessageSchema = new Schema({
     },
     message: {
         type: String,
-        required: false,
+        required: function () {
+            return this.types === 'text';
+        },
         default: null
     },
     public_id:{
         type: String,
+        required: function () {
+            return ['image', 'video', 'file', 'audio', 'multiple'].includes(this.types);
+        },
         default: null
     },
     date: {
