@@ -20,7 +20,8 @@ const MessageSchema = new Schema({
     },
     message: {
         type: String,
-        required: true
+        required: false,
+        default: null
     },
     public_id:{
         type: String,
@@ -31,8 +32,9 @@ const MessageSchema = new Schema({
         default: Date.now
     },
     status: {
-        type: Boolean,
-        default: false
+        type: String,
+        enum: ['sent', 'delivered', 'read'],
+        default: 'sent'
     }
 });
 const Message = mongose.model('message', MessageSchema);
