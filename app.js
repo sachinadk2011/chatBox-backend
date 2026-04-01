@@ -12,23 +12,30 @@ connecttomoongo();
 // ── One-time migration: convert old Boolean status → String enum ────────────
 // Old schema: status: Boolean (false = unread, true = read)
 // New schema: status: String enum ('sent','delivered','read')
-// Any document with a non-string status gets normalised on startup.
-(async () => {
-  try {
-    // true  (old "read")   → 'read'
-    await Message.updateMany({ status: true },  { $set: { status: 'read' } });
-    // false (old "unread") → 'read' as well, since these are all historical msgs
-    await Message.updateMany({ status: false }, { $set: { status: 'read' } });
-    // null / missing       → 'read'
-    await Message.updateMany(
-      { $or: [{ status: null }, { status: { $exists: false } }] },
-      { $set: { status: 'read' } }
-    );
-    console.log('[Migration] Old boolean status values normalised to string enum.');
-  } catch (err) {
-    console.error('[Migration] Failed:', err.message);
-  }
-})();
+// Any document with a non-string status gets normalised when migration is enabled.
+if (process.env.RUN_STATUS_MIGRATION === 'true') {
+  (async () => {
+    try {
+      // Normalise any non-string / legacy status values to 'read'
+      await Message.updateMany(
+        {
+          $or: [
+            // Old boolean statuses
+            { status: { $type: 'bool' } },
+            // Explicit null
+            { status: null },
+            // Missing field
+            { status: { $exists: false } }
+          ]
+        },
+        { $set: { status: 'read' } }
+      );
+      console.log('[Migration] Old boolean/null status values normalised to string enum.');
+    } catch (err) {
+      console.error('[Migration] Failed:', err.message);
+    }
+  })();
+}
 //updateSchema(); // Run the migration script to add new fields to the User schema in database
  const app = express();
  const port = process.env.PORT;
