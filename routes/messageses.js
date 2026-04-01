@@ -26,8 +26,9 @@ router.get('/fetchallmessages', fetchuser, async (req, res) => {
 router.get('/conversation/:otherUserId', fetchuser, async (req, res) => {
     try {
         const { otherUserId } = req.params;
-        const page  = Math.max(1, parseInt(req.query.page)  || 1);
-        const limit = Math.min(50, parseInt(req.query.limit) || 20);
+        const page  = Math.max(1, parseInt(req.query.page, 10)  || 1);
+        const rawLimit = parseInt(req.query.limit, 10);
+        const limit = Math.max(1, Math.min(50, rawLimit || 20));
         const skip  = (page - 1) * limit;
 
         const filter = {
