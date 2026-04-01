@@ -141,7 +141,7 @@ router.put('/markasread/:senderId', fetchuser, async (req, res) => {
         );
 
         // Emit real-time event so sender's ticks turn blue instantly
-        const io = req.app.get('io');
+        const io = req.io || req.app.get('io');
         if (io) io.to(senderId).emit('messagesRead', { by: req.user.id });
 
         return res.status(200).json({ success: true, message: "Messages marked as read" });
