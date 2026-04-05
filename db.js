@@ -4,11 +4,7 @@ const moongose_url = process.env.PRODUCTION_DB_URL;
 
 const connecttomoongo = async ()=>{
   try {
-    await moongoose.connect(moongose_url,{
-      useNewUrlParser: true,
-      useUnifiedTopology: true
-      
-    });
+    await moongoose.connect(moongose_url);
     console.log("Connected to MongoDB successfully");
   
     
