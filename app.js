@@ -6,37 +6,11 @@ const { Server } = require('socket.io');
 const User = require('./models/Users');
 const Message = require('./models/Messages');
 const cookieParser = require('cookie-parser');
+const updateSchema = require('./scripts/migration');
 
 connecttomoongo();
 
-// ── One-time migration: convert old Boolean status → String enum ────────────
-// Old schema: status: Boolean (false = unread, true = read)
-// New schema: status: String enum ('sent','delivered','read')
-// Any document with a non-string status gets normalised when migration is enabled.
-if (process.env.RUN_STATUS_MIGRATION === 'true') {
-  (async () => {
-    try {
-      // Normalise any non-string / legacy status values to 'read'
-      await Message.updateMany(
-        {
-          $or: [
-            // Old boolean statuses
-            { status: { $type: 'bool' } },
-            // Explicit null
-            { status: null },
-            // Missing field
-            { status: { $exists: false } }
-          ]
-        },
-        { $set: { status: 'read' } }
-      );
-      console.log('[Migration] Old boolean/null status values normalised to string enum.');
-    } catch (err) {
-      console.error('[Migration] Failed:', err.message);
-    }
-  })();
-}
-//updateSchema(); // Run the migration script to add new fields to the User schema in database
+updateSchema(); // Run the migration script to add new fields to the User schema in database
  const app = express();
  const port = process.env.PORT;
 // Support both spellings (FRONTEND_URL and FONTEND_URL)
@@ -46,6 +20,15 @@ app.use(cors({
   origin: FRONTEND_URL,
   credentials: true   // allow sending cookies
 }));
+
+// Set COOP and COEP headers for cross-origin isolation
+app.use((req, res, next) => {
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+  res.setHeader("Cross-Origin-Embedder-Policy", "unsafe-none");
+  next();
+});
+
+
 app.use(cookieParser());
 app.use(express.json()); // for parsing application/json
 app.use(express.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded

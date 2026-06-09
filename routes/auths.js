@@ -13,7 +13,7 @@ const rateLimit = require("express-rate-limit");
 const cloudinary = require("../configuration/cloudinaryConfig");
 const jwt = require("jsonwebtoken");
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
-const generateOtp = require("../utils/generateOtpCode");
+const {generateOtp, GenerateOtpExpiry} = require("../utils/OtpCode");
 const sendEmail = require("../utils/sendEmail");
 const {loginLimiter, deleteLimiter, signUpLimiter, VerifyOtpLimiter, forgetpwLimiter} = require("../middleware/ratelimiter");
 router.use(express.json()); // Re-enable the JSON middleware
@@ -66,7 +66,7 @@ router.post(
         return  res.status(400).json({ success: false, message: "Verification Code failed to sent" });
        }
       user.otpCode = otpcode;
-      user.otpExpiry = true;
+      user.otpExpiry = GenerateOtpExpiry();
       await user.save();
 
       
@@ -114,24 +114,23 @@ router.post("/verify-otp",VerifyOtpLimiter, async (req, res) => {
     // console.log("OTP from Request:", otpCode);
     // console.log("OTP match:", user.otpCode === otpCode);
     // console.log("Email Match:", user.email === email);
-    if ( user.otpExpiry === false) {
+    if ( user.otpExpiry && user.otpExpiry < new Date().getTime()) {
       
       return res
         .status(400)
         .json({ success: false, message: "OTP has expired" });
     } 
     if (user.otpCode !== otpCode){
-      return res.status(400).json({ success: false, message: "Invalid OTP" });
+      return res.status(400).json({ success: false, message: "Invalid OTP Code" });
     }
 
-     if ( user.email !== email) {
-        return res
-          .status(400)
-          .json({ success: false, message: "Invalid Email" });
-     }
       user.status = true; // Mark user as verified
       user.otpCode = null; // Clear OTP
-      user.otpExpiry = false;
+      if (user.isPasswordResetRequest){
+        user.isPasswordResetRequest = false;
+        user.passwordResetVerified = true;
+      }
+      user.otpExpiry = null;
       await user.save();
       // console.log("User Found:", user);
 
@@ -169,7 +168,7 @@ router.post("/resend",VerifyOtpLimiter, async (req, res) => {
     //update otp of  user
     const user = await User.updateOne(
       { email: otpEmail },
-      { $set: { otpCode: otpcode, otpExpiry: true } }
+      { $set: { otpCode: otpcode, otpExpiry: GenerateOtpExpiry() } }
     ); // updating only those which need this
 
       const emailsend =await sendEmail(req.body.email, otpcode);
@@ -410,7 +409,8 @@ router.post("/forgetpassword", forgetpwLimiter, async (req, res) => {
         return  res.status(400).json({ success: false, message: "Verification Code failed to sent" });
        }
       user.otpCode = otpcode;
-      user.otpExpiry = true;
+      user.otpExpiry = GenerateOtpExpiry();
+      user.isPasswordResetRequest = true;
       await user.save();
 
       
@@ -444,8 +444,14 @@ router.post("/resetpassword",  async (req, res) => {
         .status(404)
         .json({ success: false, message: "User not found" });
     }
+    if (!user.passwordResetVerified){
+      return res.status(403).json({
+        success:false,
+        message: "Password reset not verified. Please Verify OTP sent to your email before resetting password"
+      })
+    }
     const oldHashedPassword = user.password;
-    if (oldPassword) {
+    if (user.password && oldPassword) {
       const isMatch = await bcrypt.compare(oldPassword, oldHashedPassword);
       if (!isMatch) {
         return res
@@ -457,19 +463,23 @@ router.post("/resetpassword",  async (req, res) => {
     
     const validation = validatePassword(newPassword, user);
     if (!validation.isValid) {
+      console.error("Password validation failed:", validation.errors);
       return res.status(400).json({ success: false, errors: validation.errors });
     }
-    const isSamePassword = await bcrypt.compare(newPassword, oldHashedPassword);
+    if (user.password) {
+      const isSamePassword = await bcrypt.compare(newPassword, oldHashedPassword);
     if (isSamePassword) {
       return res
         .status(400)
         .json({ success: false, message: "New password must be different from the old password" });
     }
+  }
     const securePassword = await bcrypt.hash(
       newPassword,
       await bcrypt.genSalt(10)
     );
     user.password = securePassword;
+    user.passwordResetVerified = false;
     await user.save();
     return res
       .status(200)
@@ -481,6 +491,46 @@ router.post("/resetpassword",  async (req, res) => {
       .send({ success: false, error: "Internal Server Error" });
   }
 });
+
+// Router 11: get method to check if user is verified or not to set password reset flow in right direction
+router.get("/checkverification", async(req, res)=>{
+  try {
+    const email = req.query.email;
+    if (!email){
+      return res.status(400).json({
+        success:false,
+        message: "Email is required"
+      })
+    }
+    const user = await User.findOne({email});
+
+    if (!user){
+      return res.status(404).json({
+        success:false,
+        message: "User not Found"
+      })
+    }
+    if ( user.passwordResetVerified !== true){
+      return res.status(403).json({
+        success: false,
+        message: "Please complete OTP verification before resetting password"
+      })
+    }
+
+    // ✅ Add this
+return res.status(200).json({
+  success: true,
+  message: "Verified"
+});
+  }
+  catch (error){
+    console.error(error);
+    return res.status(500).json({
+      success:false,
+      error: "Internal server Error" || error.message
+    })
+  }
+})
 
 
 module.exports = router;
