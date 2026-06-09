@@ -70,6 +70,14 @@ const UserSchema = new Schema({
         default: null
     },
     otpExpiry:{
+        type: Date,
+        default: null
+    },
+    passwordResetVerified: {
+        type: Boolean,
+        default: false
+    },
+    isPasswordResetRequest: {
         type: Boolean,
         default: false
     }

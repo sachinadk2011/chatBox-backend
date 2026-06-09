@@ -15,8 +15,7 @@
 /.vscode
 /.idea
 /.DS_Store
-# Exclude migration script from version control
-scripts/*
+
 uploads/
 
 
