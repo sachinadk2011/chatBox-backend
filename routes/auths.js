@@ -141,7 +141,7 @@ router.post("/verify-otp",VerifyOtpLimiter, async (req, res) => {
 
       res.cookie('refreshToken', RefreshToken, {
   httpOnly: true,
-  secure: false,
+  secure: process.env.NODE_ENV === 'production',
   sameSite: 'Strict',
   maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
 });
@@ -222,7 +222,7 @@ router.post(
 
       res.cookie('refreshToken', RefreshToken, {
   httpOnly: true,
-  secure: false,
+  secure: process.env.NODE_ENV === 'production',
   sameSite: 'Strict',
   maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
 });
