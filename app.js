@@ -86,14 +86,56 @@ io.on("connection", (socket) => {
     console.log(`Updated lastActive for user ${socket.userId}`);
   });
 
+  // Track which chat each socket has open
+socket.on('chatOpen', ({ viewingUserId }) => {
+  socket.openChatWith = viewingUserId?.toString() ?? null;
+  console.log(`${socket.userId} opened chat with ${viewingUserId}`);
+});
+
+socket.on('chatClose', () => {
+  socket.openChatWith = null;
+});
+
 
   // listen for messages
-  socket.on("sendMessage", (data) => {
+  socket.on("sendMessage", async (data) => {
     console.log("Message received: ", data);
+    const receiverId = data.receiver._id?.toString();
+    const senderId = data.sender._id?.toString();
 
-  // deliver to receiver
-    io.to(data.receiver._id).emit("receiveMessage", data);
-    io.to(data.sender._id).emit("receiveMessage", data);
+    try{
+      const receiverSockets = await io.in(receiverId).fetchSockets();
+      const chatIsOpen = receiverSockets.some(
+        s=> s.openChatWith?.toString() === senderId
+      );
+
+      if (chatIsOpen){
+        // Receiver is activeky looking at this chat - mark as read immediately
+        await Message.findByIdAndUpdate(data._id,
+          { status: 'read' }
+        );
+        await Message.updateMany(
+          { sender: senderId, receiver: receiverId, status: { $ne: 'read' } },
+        { $set: { status: 'read' } }
+        );
+        const readMsg = { ...data, status: 'read' };
+      io.to(receiverId).emit("receiveMessage", readMsg);
+      io.to(senderId).emit("receiveMessage", readMsg);
+      // Sender's ticks turn blue instantly
+      io.to(senderId).emit('messagesRead', { by: receiverId });
+
+    } else {
+      // normal deliver to receiver - not looking at this chat
+       io.to(receiverId).emit("receiveMessage", data);
+       io.to(senderId).emit("receiveMessage", data);
+
+      }
+    } catch (err){
+       console.error("sendMessage handler error:", err);
+    // Fallback to normal delivery
+    io.to(receiverId).emit("receiveMessage", data);
+    io.to(senderId).emit("receiveMessage", data);
+    }
   });
 
   socket.on("disconnect", async () => {
