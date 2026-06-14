@@ -19,7 +19,11 @@ const {loginLimiter, deleteLimiter, signUpLimiter, VerifyOtpLimiter, forgetpwLim
 router.use(express.json()); // Re-enable the JSON middleware
 const validatePassword = require("../utils/ValidatePassword");
 
-
+// Health-check — used by the frontend ServerWakingBanner to detect when
+// Render's server has woken up after a cold-start sleep period.
+router.get('/ping', (req, res) => {
+  res.status(200).json({ ok: true, ts: Date.now() });
+});
 
 
 //Router 1: to create user

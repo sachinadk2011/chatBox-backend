@@ -1,16 +1,27 @@
-const moongoose = require('mongoose');
-const moongose_url = process.env.DB_URL;
+const mongoose = require('mongoose');
+const mongooseUrl = process.env.DB_URL;
 
-const connecttomoongo = async ()=>{
+let _connected = false;
+
+/** True only when Mongoose is currently connected to MongoDB */
+const isDbConnected = () => _connected;
+
+const connectToMongo = async () => {
   try {
-    await moongoose.connect(moongose_url);
-    console.log("Connected to MongoDB successfully");
-  
-    
+    await mongoose.connect(mongooseUrl);
+    _connected = true;
+    console.log('Connected to MongoDB successfully');
   } catch (error) {
-    console.log("Error connecting to MongoDB:", error.message);
-    
+    _connected = false;
+    console.error('Error connecting to MongoDB:', error.message);
+    // Do NOT crash the process — let the DB-health middleware return 503
+    // instead of the server hanging with no response.
   }
-}
+};
 
-module.exports = connecttomoongo;
+// Track live disconnects (e.g. Atlas maintenance, network blip)
+mongoose.connection.on('disconnected', () => { _connected = false; });
+mongoose.connection.on('reconnected',  () => { _connected = true;  });
+
+module.exports = connectToMongo;
+module.exports.isDbConnected = isDbConnected;

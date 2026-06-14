@@ -1,4 +1,5 @@
-const connecttomoongo = require('./db');
+const connectToMongo = require('./db');
+const { isDbConnected } = require('./db');
 const express = require('express');
 const cors = require('cors');
 const http = require('http');  
@@ -8,7 +9,7 @@ const Message = require('./models/Messages');
 const cookieParser = require('cookie-parser');
 const updateSchema = require('./scripts/migration');
 
-connecttomoongo();
+connectToMongo();
 
 updateSchema(); // Run the migration script to add new fields to the User schema in database
  const app = express();
@@ -36,11 +37,45 @@ app.use(express.static('public')); // for serving static files
 
 
 
+// ── DB-health middleware — returns 503 immediately if MongoDB is down ──
+// Without this, requests to any route that hits the DB hang for 30+ seconds
+// (MongoDB default socket timeout) and never send a response,
+// so the browser sees a network timeout instead of a 500/503 status code.
+// With this middleware, the frontend interceptor gets a real 5xx immediately
+// and can show the proper error page.
+// EXCEPTION: /api/auth/ping is always allowed through — the ServerWakingBanner
+// uses it to detect when the server (not the DB) has woken up on Render.
+app.use('/api', (req, res, next) => {
+  if (req.path === '/auth/ping') return next(); // always allow ping
+  if (!isDbConnected()) {
+    return res.status(503).json({
+      success: false,
+      message: 'Database is currently unavailable. Please try again shortly.',
+    });
+  }
+  next();
+});
+
 // available routes
 app.use('/api/auth', require('./routes/auths'));
 app.use('/api/messages', require('./routes/messageses')); // added route for messages
 app.use('/api/users', require('./routes/users')); // added route for users
 app.use('/api/friends', require('./routes/friend')); // added route for friends
+
+// ── Global 500 error handler — MUST be defined AFTER all routes ──
+// Catches any error passed to next(err) from any route/middleware.
+// Without this, DB crashes leave the request hanging (no response sent),
+// which the browser sees as a network timeout rather than a 500.
+app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
+  console.error('[Global Error Handler]', err.stack || err.message || err);
+  // Don't leak stack traces to the client in production
+  const isDev = process.env.NODE_ENV !== 'production';
+  res.status(err.status || 500).json({
+    success: false,
+    message: isDev ? (err.message || 'Internal Server Error') : 'Internal Server Error',
+    ...(isDev && { stack: err.stack }),
+  });
+});
 
 // 👉 Instead of app.listen, create a server instance
 const server = http.createServer(app);
