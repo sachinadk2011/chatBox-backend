@@ -43,10 +43,7 @@ app.use(express.static('public')); // for serving static files
 // so the browser sees a network timeout instead of a 500/503 status code.
 // With this middleware, the frontend interceptor gets a real 5xx immediately
 // and can show the proper error page.
-// EXCEPTION: /api/auth/ping is always allowed through — the ServerWakingBanner
-// uses it to detect when the server (not the DB) has woken up on Render.
 app.use('/api', (req, res, next) => {
-  if (req.path === '/auth/ping') return next(); // always allow ping
   if (!isDbConnected()) {
     return res.status(503).json({
       success: false,
