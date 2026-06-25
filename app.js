@@ -8,6 +8,7 @@ const User = require('./models/Users');
 const Message = require('./models/Messages');
 const cookieParser = require('cookie-parser');
 const updateSchema = require('./scripts/migration');
+const socketAuth = require("./middleware/socketAuth");
 
 updateSchema(); // Run the migration script to add new fields to the User schema in database
 
@@ -86,21 +87,29 @@ const io = new Server(server, {
   }
 });
 
+
+
+io.use(socketAuth);
+
 // Socket.IO logic
 io.on("connection", (socket) => {
   console.log("A user connected: ", socket.id);
 
   // Mark messages as read — receiver tells sender
-  socket.on('markRead', ({ senderId, receiverId }) => {
+  socket.on('markRead', ({ senderId }) => {
     // Emit to original sender so their ticks turn blue immediately
+    const receiverId = socket.user.id;
     io.to(senderId).emit('messagesRead', { by: receiverId });
     console.log(`markRead: ${receiverId} read messages from ${senderId}`);
   });
 
   // user joins their "room" (userId = unique)
-  socket.on("joinRoom", async (userId) => {
-    socket.userId = userId;
+  socket.on("joinRoom", async () => {
+    const userId = socket.user.id;
+
     socket.join(userId);
+
+    
     console.log(`User ${userId} joined room`);
     // Mark user online
    await User.findByIdAndUpdate(userId, {
@@ -133,7 +142,7 @@ socket.on('chatClose', () => {
   socket.on("sendMessage", async (data) => {
     console.log("Message received: ", data);
     const receiverId = data.receiver._id?.toString();
-    const senderId = data.sender._id?.toString();
+    const senderId = socket.user.id?.toString();
 
     try{
       const receiverSockets = await io.in(receiverId).fetchSockets();

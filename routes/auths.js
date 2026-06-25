@@ -101,11 +101,6 @@ router.post("/verify-otp",VerifyOtpLimiter, async (req, res) => {
   const { email, otpCode, deviceId } = req.body;
   
 
-  // Set a timeout to clear the OTP after 10 minutes (600,000 milliseconds)
-  setTimeout(async () => {
-    await User.updateOne({ email }, { $set: {otpCode: null, otpExpiry: false } });
-  }, 600000);
-
   try {
     const user = await User.findOne({ email });
     
@@ -141,7 +136,7 @@ router.post("/verify-otp",VerifyOtpLimiter, async (req, res) => {
       await user.save();
       // console.log("User Found:", user);
 
-      const userSession = await Session.findOne({ userId: user._id, deviceId: deviceId});
+      let userSession = await Session.findOne({ userId: user._id, deviceId: deviceId});
     if (!userSession){
       userSession = await Session.create({
         userId: user._id,
@@ -231,6 +226,14 @@ router.post(
           .status(400)
           .json({ success: false, error: "Invalid credentials" });
       }
+
+      if (!user.isVerified) {
+    return res.status(403).json({
+        success: false,
+        message: "Please verify your email first."
+    });
+}
+
       const comparePassword = await bcrypt.compare(password, user.password);
       if (!comparePassword) {
         return res
@@ -238,7 +241,7 @@ router.post(
           .json({ success: false, error: "Wrong password" });
       }
 
-      const userSession = await Session.findOne({ userId: user._id, deviceId: deviceId});
+      let userSession = await Session.findOne({ userId: user._id, deviceId: deviceId});
 
       if (!userSession){
       userSession = await Session.create({
@@ -362,7 +365,7 @@ router.post("/googleLogin", VerifyGoogleUser, async (req, res) => {
     user.public_id = result.public_id;
   }
 
-  const userSession = await Session.findOne({
+  let userSession = await Session.findOne({
     userId: user._id,
     deviceId: deviceId,
 
@@ -428,7 +431,7 @@ router.post("/token", async (req, res) => {
     const data = await jwt.verify(refreshToken, JWT_REFRESH_SECRET);
     const userId = data.user.id;
     const user = await User.findById(userId);
-    const userSession = await Session.findOne({
+    let userSession = await Session.findOne({
     userId: user._id,
     deviceId: deviceId,
 
@@ -468,7 +471,7 @@ router.post("/logout", fetchuser, async (req, res) => {
         .json({ success: false, error: "Account not found" });
     }
 
-    const userSession = await Session.findOne({
+    let userSession = await Session.findOne({
     userId: user._id,
     deviceId: deviceId,
 
