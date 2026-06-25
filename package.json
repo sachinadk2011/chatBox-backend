@@ -15,7 +15,7 @@
     "morgan": "^1.10.0",
     "multer": "^2.0.2",
     "node": "^23.5.0",
-    "nodemailer": "^8.0.4",
+    "nodemailer": "^9.0.0",
     "nodemon": "^3.1.10",
     "p-limit": "^7.2.0",
     "resend": "^6.5.2",
