@@ -47,11 +47,14 @@ const UserSessionSchema = new Schema({
     lastActive: {
         type: Date,
         default: Date.now
-    },
+    }
     
-    timestamps: true
+    
     
 
+},
+{
+    timestamps: true
 });
 
 UserSessionSchema.index({

@@ -17,35 +17,48 @@ const updateSchema = async()=>{
     
     console.log('[Migration] Running Production: Converting otpExpiry to Date...');
     const isProduction = process.env.NODE_ENV === 'production';
-        let filter = {};
+        let filter = {
+            
 
-        if (isProduction) {
-            console.log('[Migration] Running Production Mode...');
-            // In production, only target documents matching your specific condition
-            filter = { otpExpiry: { $type: "bool" } };
-        } else {
-            console.log('[Migration] Running Local/Dev Mode (Full Clean-up)...');
-            // Locally, match EVERYTHING ({}) to make sure all legacy validation fields are wiped clean
-            filter = {};
-        }
-        const countBefore = await User.collection.countDocuments({ 
-  emailValidationProvider: { $exists: true } 
-});
-console.log(`[Migration] Documents with old email fields: ${countBefore}`);
+        };
 
-    const result = await User.collection.updateMany(
-       filter,
-  
-  // 2. UPDATE: Set those fields to null (or a default date)
-  { 
-    $set: { 
-        otpExpiry: null,
-        passwordResetVerified: false,
-        isPasswordResetRequest: false
-    
+        const messageResult = await Message.collection.updateMany(
+            { 
+                 status: {
+                    $in: [true, false]
     }
-  }
-); 
+             },
+            {
+                $set: {
+                    status: "read"
+                }
+            }
+        );
+
+        console.log(
+            `Updated ${messageResult.modifiedCount} messages`
+        );
+
+        const result = await User.collection.updateMany(
+            {},
+            [
+                {
+                $set: {
+                    isOnline: "$onlineStatus",
+                    isVerified: "$status"
+                }
+            },
+                {
+                    $unset: [
+                    "onlineStatus",
+                    "status",
+                    "refreshToken"
+                ]
+            }
+            ]
+        )
+        
+        
         console.log(`[Migration] User documents updated: ${result.modifiedCount}`);
         
     } catch (error) {
@@ -54,6 +67,9 @@ console.log(`[Migration] Documents with old email fields: ${countBefore}`);
 
         
         
+    } finally {
+        await mongoose.disconnect();
+        console.log('Disconnected from database.');
     }
     
 }

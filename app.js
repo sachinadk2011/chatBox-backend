@@ -9,9 +9,9 @@ const Message = require('./models/Messages');
 const cookieParser = require('cookie-parser');
 const updateSchema = require('./scripts/migration');
 
-connectToMongo();
-
 updateSchema(); // Run the migration script to add new fields to the User schema in database
+
+connectToMongo();
  const app = express();
  const port = process.env.PORT;
 // Support both spellings (FRONTEND_URL and FONTEND_URL)
@@ -104,7 +104,7 @@ io.on("connection", (socket) => {
     console.log(`User ${userId} joined room`);
     // Mark user online
    await User.findByIdAndUpdate(userId, {
-    onlineStatus: true,
+    isOnline: true,
     lastActive: new Date()
   });
   });
@@ -176,7 +176,7 @@ socket.on('chatClose', () => {
     if (!socket.userId) return;
 
     await User.findByIdAndUpdate(socket.userId, {
-      onlineStatus: false,
+      isOnline: false,
       lastActive: new Date()
     });
   });

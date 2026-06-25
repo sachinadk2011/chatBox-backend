@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const User = require("../models/Users");
+const Session = require("../models/UserSession");
 const { body, validationResult } = require("express-validator");
 const bcrypt = require("bcryptjs");
 const {
@@ -60,7 +61,7 @@ router.post(
         email: req.body.email,
         password: securePassword,
         
-        onlineStatus: true,
+        isOnline: true,
         lastActive: new Date(),
       });
 
@@ -97,7 +98,7 @@ router.post(
 // Route-2:  for verifying user with otp using post method "/api/auth/verify-otp"
 router.post("/verify-otp",VerifyOtpLimiter, async (req, res) => {
   
-  const { email, otpCode } = req.body;
+  const { email, otpCode, deviceId } = req.body;
   
 
   // Set a timeout to clear the OTP after 10 minutes (600,000 milliseconds)
@@ -107,11 +108,13 @@ router.post("/verify-otp",VerifyOtpLimiter, async (req, res) => {
 
   try {
     const user = await User.findOne({ email });
+    
     if (!user) {
       return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+      .status(404)
+      .json({ success: false, message: "User not found" });
     }
+    
 
     // console.log("User Found: verify otp", user);
     // console.log("OTP from DB:", user.otpCode);
@@ -128,7 +131,7 @@ router.post("/verify-otp",VerifyOtpLimiter, async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid OTP Code" });
     }
 
-      user.status = true; // Mark user as verified
+      user.isVerified = true; // Mark user as verified
       user.otpCode = null; // Clear OTP
       if (user.isPasswordResetRequest){
         user.isPasswordResetRequest = false;
@@ -138,10 +141,28 @@ router.post("/verify-otp",VerifyOtpLimiter, async (req, res) => {
       await user.save();
       // console.log("User Found:", user);
 
+      const userSession = await Session.findOne({ userId: user._id, deviceId: deviceId});
+    if (!userSession){
+      userSession = await Session.create({
+        userId: user._id,
+        deviceId: deviceId,
+        deviceName: req.body.deviceName || null,
+        browser: req.body.browser || null,
+        OS: req.body.OS || null,
+        userAgent: req.body.userAgent || null,
+        
+      })
+      
+    }
+
       const AccessToken = await AccessTokenGenerator(user);
       const RefreshToken = await RefreshTokenGenerator(user);
-      user.refreshToken = RefreshToken;
-      await user.save();
+      userSession.refreshToken = RefreshToken;
+      userSession.lastLogin = new Date();
+      userSession.isActive = true;
+      
+      await userSession.save();
+      
 
       res.cookie('refreshToken', RefreshToken, {
   httpOnly: true,
@@ -202,7 +223,7 @@ router.post(
       return res.status(400).json({ success: false, error: errors.array() });
     }
 
-    const { email, password } = req.body;
+    const { email, password, deviceId, deviceName, browser, OS, userAgent } = req.body;
     try {
       let user = await User.findOne({ email: email });
       if (!user) {
@@ -216,12 +237,33 @@ router.post(
           .status(400)
           .json({ success: false, error: "Wrong password" });
       }
+
+      const userSession = await Session.findOne({ userId: user._id, deviceId: deviceId});
+
+      if (!userSession){
+      userSession = await Session.create({
+        userId: user._id,
+        deviceId: deviceId,
+        deviceName: deviceName || null,
+        browser: browser || null,
+        OS: OS || null,
+        userAgent: userAgent || null,
+        
+      })
+      
+    }
+
       const AccessToken = await AccessTokenGenerator(user);
       const RefreshToken = await RefreshTokenGenerator(user);
-      user.onlineStatus = true;
+      userSession.refreshToken = RefreshToken;
+      userSession.lastLogin = new Date();
+      userSession.isActive = true;
+      
+      await userSession.save();
+      user.isOnline = true;
       user.lastActive = new Date();
 
-      user.refreshToken = RefreshToken;
+      
       await user.save();
 
       res.cookie('refreshToken', RefreshToken, {
@@ -267,7 +309,7 @@ router.get("/getuser", fetchuser, async (req, res) => {
           name: user.name,
           email: user.email,
           id: user._id,
-          onlineStatus: user.onlineStatus,
+          onlineStatus: user.isOnline,
           lastActive: user.lastActive,
           profile_Url: user.profile_Url,
           public_id: user.public_id,
@@ -285,6 +327,7 @@ router.get("/getuser", fetchuser, async (req, res) => {
 router.post("/googleLogin", VerifyGoogleUser, async (req, res) => {
   try {
     const { name, email, picture } = req.user;
+    const { deviceId, deviceName, browser, OS, userAgent, fcmToken } = req.body;
     let user = await User.findOne({ email: email });
     let message = "";
     if (!user) {
@@ -293,8 +336,8 @@ router.post("/googleLogin", VerifyGoogleUser, async (req, res) => {
         name: name,
         email: email,
         googleUser: true,
-        status: true,
-        onlineStatus: true,
+        isVerified: true,
+        isOnline: true,
         lastActive: new Date(),
       });
       message = "Successfully signed up with Google";
@@ -302,8 +345,9 @@ router.post("/googleLogin", VerifyGoogleUser, async (req, res) => {
       if (!user.googleUser) {
         user.googleUser = true;
       }
+
       // login with google
-      user.onlineStatus = true;
+      user.isOnline = true;
       user.lastActive = new Date();
       await user.save();
       message = "Successfully logged in with Google";
@@ -317,10 +361,34 @@ router.post("/googleLogin", VerifyGoogleUser, async (req, res) => {
     user.profile_Url = result.secure_url;
     user.public_id = result.public_id;
   }
+
+  const userSession = await Session.findOne({
+    userId: user._id,
+    deviceId: deviceId,
+
+  });
+
+  if (!userSession){
+      userSession = await Session.create({
+        userId: user._id,
+        deviceId: deviceId,
+        deviceName: deviceName || null,
+        browser: browser || null,
+        OS: OS || null,
+        userAgent: userAgent || null,
+        
+      })
+      
+    }
+
     const AccessToken = await AccessTokenGenerator(user);
     const RefreshToken = await RefreshTokenGenerator(user);
-    user.refreshToken = RefreshToken;
-    await user.save();
+    userSession.refreshToken = RefreshToken;
+    
+    userSession.lastLogin = new Date();
+      userSession.isActive = true;
+      await userSession.save();
+    
     res.cookie('refreshToken', RefreshToken, {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
@@ -345,6 +413,12 @@ router.post("/googleLogin", VerifyGoogleUser, async (req, res) => {
 // Router 7: Token refresh
 router.post("/token", async (req, res) => {
   const refreshToken = req.cookies.refreshToken;
+  const deviceId = req.body.deviceId;
+  if (!deviceId) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Device ID is required" });
+  }
   if (!refreshToken) {
     return res
       .status(401)
@@ -354,7 +428,12 @@ router.post("/token", async (req, res) => {
     const data = await jwt.verify(refreshToken, JWT_REFRESH_SECRET);
     const userId = data.user.id;
     const user = await User.findById(userId);
-    if (!user || user.refreshToken !== refreshToken) {
+    const userSession = await Session.findOne({
+    userId: user._id,
+    deviceId: deviceId,
+
+  }); 
+    if (!user || userSession.refreshToken !== refreshToken) {
       return res
         .status(403)
         .json({ success: false, message: "Invalid refresh token" });
@@ -376,15 +455,35 @@ router.post("/token", async (req, res) => {
 router.post("/logout", fetchuser, async (req, res) => {
   try {
     const userId = req.user.id;
+    const deviceId = req.body.deviceId;
+    if (!deviceId) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Device ID is required" });
+    }
     const user = await User.findById(userId);
     if (!user) {
       return res
         .status(404)
         .json({ success: false, error: "Account not found" });
     }
-    user.refreshToken = null;
-    user.onlineStatus = false;
-    user.lastActive = new Date();
+
+    const userSession = await Session.findOne({
+    userId: user._id,
+    deviceId: deviceId,
+
+  });
+    if (!userSession) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Session not found" });
+    }
+
+    userSession.refreshToken = null;
+    user.isOnline = false;
+    user.lastActive = userSession.lastActive = new Date();
+    userSession.isActive = false;
+    await userSession.save();
     await user.save();
     res.clearCookie('refreshToken');
     return res.status(200).json({ success: true, message: "Logged out successfully" });
