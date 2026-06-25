@@ -89,7 +89,7 @@ const io = new Server(server, {
 
 
 
-io.use(socketAuth);
+console.info(io.use(socketAuth));
 
 // Socket.IO logic
 io.on("connection", (socket) => {
@@ -120,17 +120,17 @@ io.on("connection", (socket) => {
 
   // update lastActive periodically (frontend should emit "alive")
   socket.on("alive", async () => {
-    if (!socket.userId) return;
-    await User.findByIdAndUpdate(socket.userId, {
+    if (!socket.user.id) return;
+    await User.findByIdAndUpdate(socket.user.id, {
       lastActive: new Date()
     });
-    console.log(`Updated lastActive for user ${socket.userId}`);
+    console.log(`Updated lastActive for user ${socket.user.id}`);
   });
 
   // Track which chat each socket has open
 socket.on('chatOpen', ({ viewingUserId }) => {
   socket.openChatWith = viewingUserId?.toString() ?? null;
-  console.log(`${socket.userId} opened chat with ${viewingUserId}`);
+  console.log(`${socket.user.id} opened chat with ${viewingUserId}`);
 });
 
 socket.on('chatClose', () => {
@@ -182,9 +182,9 @@ socket.on('chatClose', () => {
   socket.on("disconnect", async () => {
     console.log("User disconnected: ", socket.id);
 
-    if (!socket.userId) return;
+    if (!socket.user.id) return;
 
-    await User.findByIdAndUpdate(socket.userId, {
+    await User.findByIdAndUpdate(socket.user.id, {
       isOnline: false,
       lastActive: new Date()
     });

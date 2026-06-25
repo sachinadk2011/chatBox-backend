@@ -10,8 +10,8 @@ const checkFriends = require('../middleware/checkFriends');
 
 const mutualFriends = async (user,otherUser) => {
     const mutualfrd = otherUser.friends.filter(frd=>user.friends.map(uf=> uf._id.toString()).includes(frd._id.toString())).map(frd=> ({name: frd.name, id: frd._id, email: frd.email}));
-    const profile_Url = await User.findById(otherUser._id).select('profile_Url lastActive onlineStatus');
-    return {...otherUser._doc, mutualfriends: mutualfrd, mutualfrdlen: mutualfrd.length, profile_Url: profile_Url.profile_Url, lastActive: profile_Url.lastActive , onlineStatus: profile_Url.onlineStatus }; ;
+    const profile_Url = await User.findById(otherUser._id).select('profile_Url lastActive isOnline');
+    return {...otherUser._doc, mutualfriends: mutualfrd, mutualfrdlen: mutualfrd.length, profile_Url: profile_Url.profile_Url, lastActive: profile_Url.lastActive , onlineStatus: profile_Url.isOnline }; ;
 
 }
 

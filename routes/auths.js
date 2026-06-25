@@ -219,6 +219,7 @@ router.post(
     }
 
     const { email, password, deviceId, deviceName, browser, OS, userAgent } = req.body;
+    console.info("login: ", deviceId)
     try {
       let user = await User.findOne({ email: email });
       if (!user) {
@@ -226,7 +227,7 @@ router.post(
           .status(400)
           .json({ success: false, error: "Invalid credentials" });
       }
-
+      console.info("User found for login:", user.email, "Verified:", user.isVerified);
       if (!user.isVerified) {
     return res.status(403).json({
         success: false,
