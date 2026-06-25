@@ -8,10 +8,11 @@ const User = require('./models/Users');
 const Message = require('./models/Messages');
 const cookieParser = require('cookie-parser');
 const updateSchema = require('./scripts/migration');
-
-connectToMongo();
+const socketAuth = require("./middleware/socketAuth");
 
 updateSchema(); // Run the migration script to add new fields to the User schema in database
+
+connectToMongo();
  const app = express();
  const port = process.env.PORT;
 // Support both spellings (FRONTEND_URL and FONTEND_URL)
@@ -86,42 +87,50 @@ const io = new Server(server, {
   }
 });
 
+
+
+console.info(io.use(socketAuth));
+
 // Socket.IO logic
 io.on("connection", (socket) => {
   console.log("A user connected: ", socket.id);
 
   // Mark messages as read — receiver tells sender
-  socket.on('markRead', ({ senderId, receiverId }) => {
+  socket.on('markRead', ({ senderId }) => {
     // Emit to original sender so their ticks turn blue immediately
+    const receiverId = socket.user.id;
     io.to(senderId).emit('messagesRead', { by: receiverId });
     console.log(`markRead: ${receiverId} read messages from ${senderId}`);
   });
 
   // user joins their "room" (userId = unique)
-  socket.on("joinRoom", async (userId) => {
-    socket.userId = userId;
+  socket.on("joinRoom", async () => {
+    const userId = socket.user.id;
+
     socket.join(userId);
+
+    
     console.log(`User ${userId} joined room`);
     // Mark user online
    await User.findByIdAndUpdate(userId, {
-    onlineStatus: true,
+    isOnline: true,
     lastActive: new Date()
   });
   });
 
   // update lastActive periodically (frontend should emit "alive")
   socket.on("alive", async () => {
-    if (!socket.userId) return;
-    await User.findByIdAndUpdate(socket.userId, {
+    if (!socket.user.id) return;
+    await User.findByIdAndUpdate(socket.user.id, {
       lastActive: new Date()
     });
-    console.log(`Updated lastActive for user ${socket.userId}`);
+    console.log(`Updated lastActive for user ${socket.user.id}`);
   });
 
   // Track which chat each socket has open
 socket.on('chatOpen', ({ viewingUserId }) => {
   socket.openChatWith = viewingUserId?.toString() ?? null;
-  console.log(`${socket.userId} opened chat with ${viewingUserId}`);
+  console.log(`${socket.user.id} opened chat with ${viewingUserId}`);
 });
 
 socket.on('chatClose', () => {
@@ -133,7 +142,7 @@ socket.on('chatClose', () => {
   socket.on("sendMessage", async (data) => {
     console.log("Message received: ", data);
     const receiverId = data.receiver._id?.toString();
-    const senderId = data.sender._id?.toString();
+    const senderId = socket.user.id?.toString();
 
     try{
       const receiverSockets = await io.in(receiverId).fetchSockets();
@@ -173,10 +182,10 @@ socket.on('chatClose', () => {
   socket.on("disconnect", async () => {
     console.log("User disconnected: ", socket.id);
 
-    if (!socket.userId) return;
+    if (!socket.user.id) return;
 
-    await User.findByIdAndUpdate(socket.userId, {
-      onlineStatus: false,
+    await User.findByIdAndUpdate(socket.user.id, {
+      isOnline: false,
       lastActive: new Date()
     });
   });

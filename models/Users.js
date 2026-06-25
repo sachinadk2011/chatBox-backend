@@ -41,11 +41,11 @@ const UserSchema = new Schema({
         type: Date,
         default: Date.now
     },
-    status: {
+    isVerified: {
         type: Boolean,
         default: false
       },
-      onlineStatus:{
+      isOnline:{
         type: Boolean,
         default: false
       },
@@ -58,10 +58,6 @@ const UserSchema = new Schema({
         default: null
       },
       public_id:{
-        type: String,
-        default: null
-    },
-    refreshToken:{
         type: String,
         default: null
     },
