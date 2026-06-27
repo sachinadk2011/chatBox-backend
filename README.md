@@ -1,12 +1,3 @@
----
-title: Chatwave Backend
-emoji: 💬
-colorFrom: indigo
-colorTo: blue
-sdk: docker
-pinned: false
----
-
 <div align="center">
 
 # 💬 ChatWave — Backend
