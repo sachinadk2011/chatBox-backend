@@ -1,21 +1,20 @@
 FROM node:20-alpine
 
-# Hugging Face requires a non-root user (ID 1000)
-RUN adduser -D -u 1000 user
-USER user
-ENV HOME=/home/user \
-    PATH=/home/user/.local/bin:$PATH
+# Use the existing 'node' user instead of creating a new one
+USER node
+ENV HOME=/home/node \
+    PATH=/home/node/.local/bin:$PATH
 
 WORKDIR /app
 
-# Copy package manifests with correct user permissions
-COPY --chown=user package.json package-lock.json* ./
+# Copy package manifests with correct user permissions (use 'node' instead of 'user')
+COPY --chown=node package.json package-lock.json* ./
 
 # Install dependencies
 RUN npm install --omit=dev
 
 # Copy the rest of the backend source files
-COPY --chown=user . .
+COPY --chown=node . .
 
 # Hugging Face strictly routes incoming traffic through port 7860
 EXPOSE 7860
