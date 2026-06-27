@@ -8,12 +8,12 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      # Upgraded to @v6 to resolve the Node 20 deprecation warning
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      # Updated version path below fixes the "Unable to resolve action" error
       - name: Push Code to Hugging Face Space
         uses: huggingface/hub-sync@v0.1.0
         with:
