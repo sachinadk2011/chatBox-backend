@@ -1,21 +1,25 @@
-# ── Backend Dockerfile ───────────────────────────────────────────
 FROM node:20-alpine
+
+# Hugging Face requires a non-root user (ID 1000)
+RUN adduser -D -u 1000 user
+USER user
+ENV HOME=/home/user \
+    PATH=/home/user/.local/bin:$PATH
 
 WORKDIR /app
 
-# Copy dependency manifests
-COPY package.json package-lock.json* ./
+# Copy package manifests with correct user permissions
+COPY --chown=user package.json package-lock.json* ./
 
-# Install production dependencies
+# Install dependencies
 RUN npm install --omit=dev
 
-# Copy the rest of the source
-COPY . .
+# Copy the rest of the backend source files
+COPY --chown=user . .
 
-# Expose Express / Socket.IO port
-EXPOSE 8000
+# Hugging Face strictly routes incoming traffic through port 7860
+EXPOSE 7860
+ENV PORT=7860
 
-# Use plain node so env vars come from Docker (no --env-file needed)
-# Docker Compose injects all vars via the `environment:` section
+# Start your Express / Socket.IO app
 CMD ["node", "app.js"]
-
