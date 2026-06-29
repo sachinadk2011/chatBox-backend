@@ -9,12 +9,13 @@ const Message = require('./models/Messages');
 const cookieParser = require('cookie-parser');
 const updateSchema = require('./scripts/migration');
 const socketAuth = require("./middleware/socketAuth");
+const { sendNotification } = require('./service/notificationSerivice');
 
 updateSchema(); // Run the migration script to add new fields to the User schema in database
 
 connectToMongo();
- const app = express();
- const port = process.env.PORT;
+const app = express();
+const port = process.env.PORT;
 // Support both spellings (FRONTEND_URL and FONTEND_URL)
 const FRONTEND_URL = process.env.FRONTEND_URL;
 //const FRONTEND_URL = process.env.DEV_URL ;
@@ -146,6 +147,7 @@ socket.on('chatClose', () => {
 
     try{
       const receiverSockets = await io.in(receiverId).fetchSockets();
+      const receiverIsConnected = receiverSockets.length > 0;
       const chatIsOpen = receiverSockets.some(
         s=> s.openChatWith?.toString() === senderId
       );
@@ -170,6 +172,10 @@ socket.on('chatClose', () => {
        io.to(receiverId).emit("receiveMessage", data);
        io.to(senderId).emit("receiveMessage", data);
 
+       // 🔔 Send push notification if receiver is offline or tab is closed
+      if (!receiverIsConnected) {
+        await sendNotification(receiverId, data);
+      }
       }
     } catch (err){
        console.error("sendMessage handler error:", err);
