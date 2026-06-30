@@ -173,9 +173,10 @@ socket.on('chatClose', () => {
        io.to(senderId).emit("receiveMessage", data);
 
        // 🔔 Send push notification if receiver is offline or tab is closed
-      if (!receiverIsConnected) {
+       console.info("receiver is connected: ", receiverIsConnected)
+     
         await sendNotification(receiverId, data);
-      }
+      
       }
     } catch (err){
        console.error("sendMessage handler error:", err);

@@ -2,6 +2,17 @@ require("../configuration/firebase"); // ensures initializeApp() has run
 const { getMessaging } = require("firebase-admin/messaging");
 const Session = require("../models/UserSession");
 
+const getPreview = (msg, types) =>{
+    if (types === 'image')    return '📷 Sent an image';
+  if (types === 'video')    return '🎥 Sent a video';
+  if (types === 'multiple') return '📎 Sent multiple attachment';
+  if (types === 'audio')    return '🎤 Sent an audio file';
+  if (types === 'file')     return '📁 Sent a file';
+  const text = msg ?? '';
+  return text.length > 55 ? text.slice(0, 55) + '…' : text;
+};
+
+
 const sendNotification = async (receiverId, payload) => {
   try {
     const sessions = await Session.find({
@@ -17,42 +28,48 @@ const sendNotification = async (receiverId, payload) => {
       return;
     }
 
-    const messageBody =
+    /* const messageBody =
       payload.types === "text"
         ? payload.message
         : payload.types === "multiple"
-        ? "📎 Sent multiple files"
+        ? "📎 Sent multiple attachment"
         : payload.types === "video"
         ? "📹 Sent a video"
         : payload.types === "image"
         ? "🖼️ Sent an image"
         : payload.types === "audio"
         ? "🎵 Sent an audio file"
-        : "sent you an attachment 📎";
+        : "sent you an attachment 📎"; */
+        const messageBody = getPreview(payload.message, payload.types);
 
         console.info("sending notification to tokens: ", tokens, " | messageBody: ", messageBody, " | payload: ", payload);
     const response = await getMessaging().sendEachForMulticast({
       tokens,
-      notification: {
-        title: payload.sender?.name || "New Message",
-        body: messageBody,
-      },
+      
       data: {
         senderId: String(payload.sender?._id || payload.sender || ""),
+        senderName: payload.sender?.name || "Someone",
         type: payload.types || "text",
+        preview: String(messageBody),
         click_action: "FLUTTER_NOTIFICATION_CLICK", // helps mobile
+        link: `${process.env.FRONTEND_URL}/chats/v1/u/${payload.sender?._id || ""}`,
       },
-      webpush: {
+       webpush: {
+        headers: { Urgency: "high" },
         fcmOptions: {
           link: `${process.env.FRONTEND_URL}/chats/v1/u/${payload.sender?._id || ""}`,
         },
-        notification: {
+        /* notification: {
           icon: "https://res.cloudinary.com/df4pswtdc/image/upload/w_100,h_100,c_fit/chat_waves%20logo/vyxmokk7tiorkopsxlei.png",
           badge: "https://res.cloudinary.com/df4pswtdc/image/upload/w_100,h_100,c_fit/chat_waves%20logo/vyxmokk7tiorkopsxlei.png",
-        },
+        }, */
       },
     });
     console.info("FCM notification response:", response);
+
+    response.responses.forEach((r, i) => {
+      if (!r.success) console.warn("FCM failure:", tokens[i], r.error?.code, r.error?.message);
+    });
 
     // Clean up invalid/expired tokens
     response.responses.forEach(async (resp, idx) => {
