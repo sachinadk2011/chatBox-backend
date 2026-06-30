@@ -1,4 +1,5 @@
-const admin = require("../configuration/firebase");
+require("../configuration/firebase"); // ensures initializeApp() has run
+const { getMessaging } = require("firebase-admin/messaging");
 const Session = require("../models/UserSession");
 
 const sendNotification = async (receiverId, payload) => {
@@ -29,7 +30,8 @@ const sendNotification = async (receiverId, payload) => {
         ? "🎵 Sent an audio file"
         : "sent you an attachment 📎";
 
-    const response = await admin.messaging().sendEachForMulticast({
+        console.info("sending notification to tokens: ", tokens, " | messageBody: ", messageBody, " | payload: ", payload);
+    const response = await getMessaging().sendEachForMulticast({
       tokens,
       notification: {
         title: payload.sender?.name || "New Message",
@@ -42,7 +44,7 @@ const sendNotification = async (receiverId, payload) => {
       },
       webpush: {
         fcmOptions: {
-          link: `${process.env.FRONTEND_URL}/chat/${payload.sender?._id || ""}`,
+          link: `${process.env.FRONTEND_URL}/chats/v1/u/${payload.sender?._id || ""}`,
         },
         notification: {
           icon: "https://res.cloudinary.com/df4pswtdc/image/upload/w_100,h_100,c_fit/chat_waves%20logo/vyxmokk7tiorkopsxlei.png",
@@ -50,6 +52,7 @@ const sendNotification = async (receiverId, payload) => {
         },
       },
     });
+    console.info("FCM notification response:", response);
 
     // Clean up invalid/expired tokens
     response.responses.forEach(async (resp, idx) => {

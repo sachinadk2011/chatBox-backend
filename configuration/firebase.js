@@ -1,4 +1,4 @@
-const admin = require("firebase-admin");
+const { initializeApp, cert, getApps } = require("firebase-admin/app");
 const fs = require("fs");
 const path = require("path");
 
@@ -7,7 +7,7 @@ let serviceAccount;
 // Render Secret File path
 const renderSecretPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
 
-console.log("admin ", admin);
+//console.log("admin ", admin);
 // Local file path
 const localPath = path.join(
   __dirname,
@@ -27,9 +27,9 @@ try {
     serviceAccount = require(localPath);
   }
 
-  if (!admin.getApps().length) {
-    admin.initializeApp({
-      credential: admin.cert(serviceAccount),
+  if (!getApps().length) {
+    initializeApp({
+      credential: cert(serviceAccount),
     });
   }
 } catch (error) {
@@ -38,4 +38,4 @@ try {
   throw error;
 }
 
-module.exports = admin;
+module.exports = {};
