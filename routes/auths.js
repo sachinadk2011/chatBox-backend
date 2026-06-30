@@ -639,5 +639,50 @@ return res.status(200).json({
   }
 })
 
+// Router 12: post method to get the fcm of user from frontendand save it in user session model 
+router.post("/save-fcm-token", fetchuser, async (req, res) =>{
+  const {fcmToken , deviceId} = req.body;
+  console.info("save-fcm-token: ", fcmToken);
+  if ( !fcmToken || !deviceId){
+    return res.status(400).json({
+      success:false,
+      error: "fcmToken and deviceId are required"
+    });
+  }
+  const userId = req.user.id;
+  try {
+    const userSession = await Session.findOneAndUpdate({
+      userId: userId, 
+      deviceId: deviceId
+    },
+  {
+    fcmToken: fcmToken
+  },
+  { new: true }
+  )
+  if (!userSession){
+    return res.status(404).json({
+      success:false,
+      error: "Session not found for this user and device"
+    });
+  }
+
+  return res.status(200).json({
+    success: true
+  });
+
+  }catch (error) {
+    console.error("error fromfcm token route: ", error);
+    return res.
+    status(500)
+    .json({
+      success:false,
+      error: "Internal Server Error" || error.message
+    });
+  }
+
+  
+})
+
 
 module.exports = router;
