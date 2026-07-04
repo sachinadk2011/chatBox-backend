@@ -88,7 +88,18 @@ const io = new Server(server, {
   }
 });
 
+const sweepStaleUsers = async () => {
+  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+  const result = await User.updateMany(
+    { isOnline: true, lastActive: { $lt: fiveMinutesAgo } },
+    { $set: { isOnline: false } }
+  );
+  console.info(`Swept stale online users: ${result.modifiedCount} updated`);
+};
 
+// Run immediately on startup, then every 5 minutes
+sweepStaleUsers();
+setInterval(sweepStaleUsers, 5 * 60 * 1000);
 
 console.info(io.use(socketAuth));
 
@@ -123,14 +134,26 @@ io.on("connection", (socket) => {
   socket.on("alive", async () => {
     if (!socket.user.id) return;
     await User.findByIdAndUpdate(socket.user.id, {
-      lastActive: new Date()
+      lastActive: new Date(),
+      isOnline: true
     });
     console.log(`Updated lastActive for user ${socket.user.id}`);
   });
 
   // Track which chat each socket has open
-socket.on('chatOpen', ({ viewingUserId }) => {
+socket.on('chatOpen', async ({ viewingUserId }) => {
   socket.openChatWith = viewingUserId?.toString() ?? null;
+  // First fetch, then decide
+  /* const viewedUser = await User.findById(viewingUserId);
+  if (!viewedUser) return;
+
+  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+  const likelyOnline = viewedUser.lastActive > fiveMinutesAgo;
+
+  if (viewedUser.isOnline !== likelyOnline) {
+    await User.findByIdAndUpdate(viewingUserId, { isOnline: likelyOnline });
+  }
+  console.info(`opened chat user status updated: ${viewedUser.isOnline}`); */
   console.log(`${socket.user.id} opened chat with ${viewingUserId}`);
 });
 
