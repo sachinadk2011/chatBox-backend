@@ -1,6 +1,8 @@
 <p align="center">
-  <img src="../chatbox-frontend/public/icon/android-chrome-192x192.png" alt="ChatWave Logo" width="100" />
+ 
+<img width="180" height="180" alt="image" src="https://github.com/user-attachments/assets/3905e74d-1a84-4b87-a5d2-44831016d1a9" />
 </p>
+
 
 <h1 align="center">ChatWave — Backend</h1>
 
